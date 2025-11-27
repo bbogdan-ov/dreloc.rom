@@ -41,10 +41,15 @@ const byte  dreloc.WALK_FRAMES_DELAY { 8 } // delay between anim frames in game 
 const byte  dreloc.COLOR             { 5 }
 const byte  dreloc.WALK_FRAMES       { 4 }
 const short dreloc.FRAME_STRIDE      { 1728* } // data offset between frames in bytes
+const short dreloc.TARGET_NEAR       { 8* }
 
 // ==============================
 // Variables
 // ==============================
+
+var short a
+var short b
+var short c
 
 var short mouse.prev.x
 var short mouse.prev.y
@@ -109,11 +114,11 @@ fun on-mouse ( -> ) {
 // ==============================
 
 fun dreloc.set-target-pos ( short short -- ) {
-	{ 2* div 2* mul } dreloc.HEIGHT SCREEN_HEIGHT clamp2
+	dreloc.HEIGHT SCREEN_HEIGHT clamp2
 	dreloc.HEIGHT sub
 	-> dreloc.target.y
 
-	{ 2* div 2* mul } { dreloc.WIDTH 2* div } { SCREEN_WIDTH dreloc.WIDTH 2* div sub } clamp2
+	{ dreloc.WIDTH 2* div } { SCREEN_WIDTH dreloc.WIDTH 2* div sub } clamp2
 	{ dreloc.WIDTH 2* div } sub
 	-> dreloc.target.x
 }
@@ -144,11 +149,16 @@ fun dreloc.update ( -- ) {
 	0 -> dreloc.is-walking
 
 	// Move to target
-	dreloc.x dreloc.target.x lth if { Dir.right dreloc.move }
-	dreloc.x dreloc.target.x gth if { Dir.left dreloc.move }
-	dreloc.x dreloc.target.x eq if {
-		dreloc.y dreloc.target.y lth if { Dir.down dreloc.move }
-		dreloc.y dreloc.target.y gth if { Dir.up dreloc.move }
+	dreloc.x dreloc.target.x dreloc.TARGET_NEAR is-near if {
+		// Move vertically
+		dreloc.y dreloc.target.y dreloc.TARGET_NEAR is-near 0 eq if {
+			dreloc.y dreloc.target.y lth if { Dir.down dreloc.move }
+			dreloc.y dreloc.target.y gth if { Dir.up dreloc.move }
+		}
+	} else {
+		// Move horizontally
+		dreloc.x dreloc.target.x lth if { Dir.right dreloc.move }
+		dreloc.x dreloc.target.x gth if { Dir.left dreloc.move }
 	}
 
 	dreloc.is-walking if {
@@ -236,6 +246,16 @@ fun clamp2 ( short short short -- short ) {
 	sth-r lth-k if { pop-r nip /* min */ return } else { /* min */ pop }
 	sth-r gth-k if {       nip /* max */ return } else { /* max */ pop }
 	/* value */
+}
+
+// ( a b radius -- bool )
+fun is-near ( short short short -- byte ) {
+	// TODO: refactor to if-elif-else chain when i implement it...
+	// TODO: i should not use `load` and `store` in such small function
+	-> c -> b -> a
+
+	b c sub a lth
+	b c add a gth and
 }
 
 // ==============================
