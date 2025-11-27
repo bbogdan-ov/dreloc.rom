@@ -143,16 +143,20 @@ fun on-mouse ( -> ) {
 // ==============================
 
 fun dreloc.set-target-pos ( short short -- ) {
-	dreloc.HEIGHT SCREEN_HEIGHT clamp2
+	-> [x y]
+
+	[y] dreloc.HEIGHT SCREEN_HEIGHT clamp2
 	dreloc.HEIGHT sub
 	-> dreloc.target.y
 
-	{ dreloc.WIDTH 2* div } { SCREEN_WIDTH dreloc.WIDTH 2* div sub } clamp2
+	[x] { dreloc.WIDTH 2* div } { SCREEN_WIDTH dreloc.WIDTH 2* div sub } clamp2
 	{ dreloc.WIDTH 2* div } sub
 	-> dreloc.target.x
 }
 
 fun dreloc.move ( byte -- ) {
+	-> [dir]
+
 	// Move right
 	dup Dir.right eq if {
 		dreloc.x dreloc.WALK_SPEED add -> dreloc.x
@@ -170,8 +174,8 @@ fun dreloc.move ( byte -- ) {
 		dreloc.y dreloc.WALK_SPEED sub -> dreloc.y
 	}
 
-	-> dreloc.walk-dir
-	1 -> dreloc.is-walking
+	[dir] -> dreloc.walk-dir
+	1     -> dreloc.is-walking
 }
 
 fun dreloc.update ( -- ) {
@@ -270,11 +274,12 @@ fun dreloc.draw-shadow ( -- ) {
 
 // ( value min max -- result )
 fun clamp2 ( short short short -- short ) {
+	-> [value min max]
 	sth sth
 
-	sth-r lth-k if { pop-r nip /* min */ return } else { /* min */ pop }
-	sth-r gth-k if {       nip /* max */ return } else { /* max */ pop }
-	/* value */
+	sth-r lth-k [value min _] if { pop-r nip return } else { pop }
+	sth-r gth-k [value max _] if {       nip return } else { pop }
+	[value]
 }
 
 // ( a b radius -- bool )
