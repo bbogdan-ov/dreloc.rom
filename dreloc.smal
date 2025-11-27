@@ -37,8 +37,9 @@ const byte Dir.right { 3 }
 const short dreloc.WIDTH             { 72* }
 const short dreloc.HEIGHT            { 96* }
 const short dreloc.WALK_SPEED        { 2* }
-const byte  dreloc.WALK_FRAMES       { 4 }
 const byte  dreloc.WALK_FRAMES_DELAY { 8 } // delay between anim frames in game frames
+const byte  dreloc.COLOR             { 5 }
+const byte  dreloc.WALK_FRAMES       { 4 }
 const short dreloc.FRAME_STRIDE      { 1728* } // data offset between frames in bytes
 
 // ==============================
@@ -73,32 +74,14 @@ fun on-reset ( -> ) {
 }
 
 fun on-screen ( -> ) {
+	// Clear the whole screen
+	// I think it is not that bad for performance...
 	0* Screen.x output
 	0* Screen.y output
 	0b10000000 Screen.pixel output
 
 	dreloc.update
-
-	{ dreloc.x dreloc.WIDTH 2* div 4* sub add }   Screen.x output
-	{ dreloc.y dreloc.HEIGHT add 24* sub } Screen.y output
-	&sprite.dreloc-shadow Screen.addr output
-	0b00100110 Screen.auto output
-	10 Screen.sprite
-		output-k
-		output-k
-		output-k
-		output
-
-	{ dreloc.x dreloc.WIDTH 2* div 4* sub add }   Screen.x output
-	{ dreloc.y dreloc.HEIGHT add 24* sub } Screen.y output
-	&sprite.dreloc-shadow Screen.addr output
-	0b00010000 10 or Screen.sprite
-		output-k
-		output-k
-		output-k
-		output
-
-	5 dreloc.x dreloc.y dreloc.draw
+	dreloc.draw
 }
 
 fun on-mouse ( -> ) {
@@ -181,7 +164,7 @@ fun dreloc.update-walk-anim ( -- ) {
 	-> dreloc.walk-frame
 }
 
-fun dreloc.draw ( byte short short -- ) {
+fun dreloc.draw ( -- ) {
 	0*
 	dreloc.walk-dir Dir.down  eq if { /* */ }
 	dreloc.walk-dir Dir.left  eq if { pop dreloc.FRAME_STRIDE 3* mul }
@@ -199,11 +182,11 @@ fun dreloc.draw ( byte short short -- ) {
 
 	&sprite.dreloc add Screen.addr output
 
-	Screen.y output
-	Screen.x output
+	dreloc.x Screen.x output
+	dreloc.y Screen.y output
 
 	0b10000110 Screen.auto output
-	0b10000000 or Screen.sprite
+	0b10000000 dreloc.COLOR or Screen.sprite
 		output-k
 		output-k
 		output-k
