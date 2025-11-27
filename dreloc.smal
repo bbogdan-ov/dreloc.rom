@@ -81,6 +81,7 @@ fun on-screen ( -> ) {
 	0b10000000 Screen.pixel output
 
 	dreloc.update
+	dreloc.draw-shadow
 	dreloc.draw
 }
 
@@ -199,6 +200,29 @@ fun dreloc.draw ( -- ) {
 		output-k
 		output-k
 		output
+}
+
+fun dreloc.draw-shadow ( -- ) {
+	// Place shadow somewhere below Dreloc
+	{ dreloc.x dreloc.WIDTH 2* div 4* sub add } Screen.x output
+	{ dreloc.y dreloc.HEIGHT 26* sub add }      Screen.y output
+
+	0b00100110 Screen.auto output
+
+	// Right part
+	{
+		&sprite.dreloc-shadow Screen.addr output
+		10 Screen.sprite output-k output-k output-k output
+	}
+
+	// Left flipped part
+	{
+		// TODO: refactor Y position into a constant when i implement local symbols...
+		{ dreloc.y dreloc.HEIGHT 26* sub add } Screen.y output
+
+		&sprite.dreloc-shadow Screen.addr output
+		0b00010000 10 or Screen.sprite output-k output-k output-k output
+	}
 }
 
 // ==============================
