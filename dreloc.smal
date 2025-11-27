@@ -34,6 +34,8 @@ const byte Dir.left  { 1 }
 const byte Dir.up    { 2 }
 const byte Dir.right { 3 }
 
+const short GRID_SIZE { 16* }
+
 const short dreloc.WIDTH             { 72* }
 const short dreloc.HEIGHT            { 96* }
 const short dreloc.WALK_SPEED        { 2* }
@@ -41,7 +43,6 @@ const byte  dreloc.WALK_FRAMES_DELAY { 8 } // delay between anim frames in game 
 const byte  dreloc.COLOR             { 5 }
 const byte  dreloc.WALK_FRAMES       { 4 }
 const short dreloc.FRAME_STRIDE      { 1728* } // data offset between frames in bytes
-const short dreloc.TARGET_NEAR       { 16* }
 
 // ==============================
 // Variables
@@ -145,11 +146,11 @@ fun on-mouse ( -> ) {
 fun dreloc.set-target-pos ( short short -- ) {
 	-> [x y]
 
-	{ [y] dreloc.TARGET_NEAR div dreloc.TARGET_NEAR mul } -> [y]
+	{ [y] GRID_SIZE div GRID_SIZE mul } -> [y]
 	[y] dreloc.HEIGHT SCREEN_HEIGHT clamp2 -> [y]
 	[y] dreloc.HEIGHT sub -> dreloc.target.y
 
-	{ [x] dreloc.TARGET_NEAR div dreloc.TARGET_NEAR mul } -> [x]
+	{ [x] GRID_SIZE div GRID_SIZE mul } -> [x]
 	[x] { dreloc.WIDTH 2* div } { SCREEN_WIDTH dreloc.WIDTH 2* div sub } clamp2 -> [x]
 	[x] { dreloc.WIDTH 2* div } sub -> dreloc.target.x
 }
@@ -197,7 +198,7 @@ fun dreloc.update ( -- ) {
 	dreloc.is-walking if {
 		dreloc.update-walk-anim
 	} else {
-		0 -> dreloc.walk-frame
+		dreloc.WALK_FRAMES_DELAY 2 div -> dreloc.walk-frame
 	}
 }
 
