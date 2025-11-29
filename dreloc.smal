@@ -75,8 +75,8 @@ fun on-reset ( -> ) {
 	SCREEN_WIDTH  Screen.width output
 	SCREEN_HEIGHT Screen.height output
 
-	&on-screen     Screen.vector output
-	&on-mouse      Mouse.vector output
+	&on-screen Screen.vector output
+	&on-mouse  Mouse.vector output
 }
 
 fun on-screen ( -> ) {
@@ -212,22 +212,24 @@ fun dreloc.update-walk-anim ( -- ) {
 }
 
 fun dreloc.draw ( -- ) {
-	0*
-	dreloc.walk-dir Dir.down  eq if { /* */ }
-	dreloc.walk-dir Dir.left  eq if { pop dreloc.FRAME_STRIDE 3* mul }
-	dreloc.walk-dir Dir.up    eq if { pop dreloc.FRAME_STRIDE 6* mul }
-	dreloc.walk-dir Dir.right eq if { pop dreloc.FRAME_STRIDE 9* mul }
+	{
+		0*
+		dreloc.walk-dir Dir.down  eq if { /* */ }
+		dreloc.walk-dir Dir.left  eq if { pop dreloc.FRAME_STRIDE 3* mul }
+		dreloc.walk-dir Dir.up    eq if { pop dreloc.FRAME_STRIDE 6* mul }
+		dreloc.walk-dir Dir.right eq if { pop dreloc.FRAME_STRIDE 9* mul }
+	} -> (frame)
 
 	dreloc.is-walking if {
-		dreloc.walk-frame dreloc.WALK_FRAMES_DELAY div sth
-		sth-kr 0 eq if { /* */ }
-		sth-kr 1 eq if { dreloc.FRAME_STRIDE add }
-		sth-kr 2 eq if { /* */ }
-		sth-kr 3 eq if { dreloc.FRAME_STRIDE 2* mul add }
+		{ dreloc.walk-frame dreloc.WALK_FRAMES_DELAY } div sth
+		sth-kr 0 eq if { (frame) }
+		sth-kr 1 eq if { (frame) dreloc.FRAME_STRIDE add }
+		sth-kr 2 eq if { (frame) }
+		sth-kr 3 eq if { (frame) dreloc.FRAME_STRIDE 2* mul add }
 		pop-r
-	}
+	} -> (frame)
 
-	&sprite.dreloc add Screen.addr output
+	(frame) &sprite.dreloc add Screen.addr output
 
 	dreloc.x Screen.x output
 	dreloc.y Screen.y output
