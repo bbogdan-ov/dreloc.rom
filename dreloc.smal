@@ -29,10 +29,11 @@ const byte Mouse.state  { 0x96 }
 const short SCREEN_WIDTH { 512* }
 const short SCREEN_HEIGHT { 512* }
 
-const byte Dir.down  { 0 }
-const byte Dir.left  { 1 }
-const byte Dir.up    { 2 }
-const byte Dir.right { 3 }
+type byte Dir
+const Dir Dir.down  { 0 as (Dir) }
+const Dir Dir.left  { 1 as (Dir) }
+const Dir Dir.up    { 2 as (Dir) }
+const Dir Dir.right { 3 as (Dir) }
 
 const short GRID_SIZE { 16* }
 
@@ -60,8 +61,8 @@ var short dreloc.y
 var short dreloc.target.x
 var short dreloc.target.y
 var byte  dreloc.walk-frame
-var byte  dreloc.walk-dir
 var byte  dreloc.is-walking
+var Dir   dreloc.walk-dir
 
 // ==============================
 // Vectors
@@ -155,7 +156,7 @@ fun dreloc.set-target-pos ( short:x short:y -- ) {
 	} -> dreloc.target.x
 }
 
-fun dreloc.move ( byte:dir -- ) {
+fun dreloc.move ( Dir:dir -- ) {
 	dup (dir) Dir.right eq if {
 		// Move right
 		dreloc.x dreloc.WALK_SPEED add -> dreloc.x
