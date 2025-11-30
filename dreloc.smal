@@ -156,20 +156,17 @@ fun dreloc.set-target-pos ( short:x short:y -- ) {
 }
 
 fun dreloc.move ( byte:dir -- ) {
-	// Move right
-	dup Dir.right eq if {
+	dup (dir) Dir.right eq if {
+		// Move right
 		dreloc.x dreloc.WALK_SPEED add -> dreloc.x
-	}
-	// Move left
-	dup Dir.left eq if {
+	} elif dup (dir) Dir.left eq {
+		// Move left
 		dreloc.x dreloc.WALK_SPEED sub -> dreloc.x
-	}
-	// Move down
-	dup Dir.down eq if {
+	} elif dup (dir) Dir.down eq {
+		// Move down
 		dreloc.y dreloc.WALK_SPEED add -> dreloc.y
-	}
-	// Move up
-	dup Dir.up eq if {
+	} elif dup (dir) Dir.up eq {
+		// Move up
 		dreloc.y dreloc.WALK_SPEED sub -> dreloc.y
 	}
 
@@ -184,13 +181,13 @@ fun dreloc.update ( -- ) {
 	dreloc.x dreloc.target.x eq if {
 		// Move vertically
 		dreloc.y dreloc.target.y neq if {
-			dreloc.y dreloc.target.y lth if { Dir.down dreloc.move }
-			dreloc.y dreloc.target.y gth if { Dir.up dreloc.move }
+			/**/ dreloc.y dreloc.target.y lth if { Dir.down dreloc.move }
+			elif dreloc.y dreloc.target.y gth    { Dir.up dreloc.move }
 		}
 	} else {
 		// Move horizontally
-		dreloc.x dreloc.target.x lth if { Dir.right dreloc.move }
-		dreloc.x dreloc.target.x gth if { Dir.left dreloc.move }
+		/**/ dreloc.x dreloc.target.x lth if { Dir.right dreloc.move }
+		elif dreloc.x dreloc.target.x gth    { Dir.left dreloc.move }
 	}
 
 	dreloc.is-walking if {
@@ -201,27 +198,26 @@ fun dreloc.update ( -- ) {
 }
 
 fun dreloc.update-walk-anim ( -- ) {
-	dreloc.walk-frame inc
-	dup { dreloc.WALK_FRAMES dreloc.WALK_FRAMES_DELAY mul }
-	eq if { pop 0 }
-	-> dreloc.walk-frame
+	dreloc.walk-frame inc -> (frame)
+	(frame) dup { dreloc.WALK_FRAMES dreloc.WALK_FRAMES_DELAY mul }
+	eq if { (frame) pop 0 -> (frame) }
+
+	(frame) -> dreloc.walk-frame
 }
 
 fun dreloc.draw ( -- ) {
-	{
-		0*
-		dreloc.walk-dir Dir.down  eq if { /* */ }
-		dreloc.walk-dir Dir.left  eq if { pop dreloc.FRAME_STRIDE 3* mul }
-		dreloc.walk-dir Dir.up    eq if { pop dreloc.FRAME_STRIDE 6* mul }
-		dreloc.walk-dir Dir.right eq if { pop dreloc.FRAME_STRIDE 9* mul }
-	} -> (frame)
+	/**/ dreloc.walk-dir Dir.down  eq if { 0* }
+	elif dreloc.walk-dir Dir.left  eq    { dreloc.FRAME_STRIDE 3* mul }
+	elif dreloc.walk-dir Dir.up    eq    { dreloc.FRAME_STRIDE 6* mul }
+	elif dreloc.walk-dir Dir.right eq    { dreloc.FRAME_STRIDE 9* mul }
+	else { 0* } -> (frame)
 
 	dreloc.is-walking if {
 		{ dreloc.walk-frame dreloc.WALK_FRAMES_DELAY } div sth
-		sth-kr 0 eq if { (frame) }
-		sth-kr 1 eq if { (frame) dreloc.FRAME_STRIDE add -> (frame) }
-		sth-kr 2 eq if { (frame) }
-		sth-kr 3 eq if { (frame) dreloc.FRAME_STRIDE 2* mul add -> (frame) }
+		/**/ sth-kr 0 eq if { (frame) }
+		elif sth-kr 1 eq    { (frame) dreloc.FRAME_STRIDE add -> (frame) }
+		elif sth-kr 2 eq    { (frame) }
+		elif sth-kr 3 eq    { (frame) dreloc.FRAME_STRIDE 2* mul add -> (frame) }
 		pop-r
 	} -> (frame)
 
