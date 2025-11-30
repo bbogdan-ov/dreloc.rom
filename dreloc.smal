@@ -143,9 +143,7 @@ fun on-mouse ( -> ) {
 // Dreloc
 // ==============================
 
-fun dreloc.set-target-pos ( short short -- ) {
-	-> (x y)
-
+fun dreloc.set-target-pos ( short:x short:y -- ) {
 	{
 		{ (y) snap } dreloc.HEIGHT SCREEN_HEIGHT clamp
 		dreloc.HEIGHT sub
@@ -157,9 +155,7 @@ fun dreloc.set-target-pos ( short short -- ) {
 	} -> dreloc.target.x
 }
 
-fun dreloc.move ( byte -- ) {
-	-> (dir)
-
+fun dreloc.move ( byte:dir -- ) {
 	// Move right
 	dup Dir.right eq if {
 		dreloc.x dreloc.WALK_SPEED add -> dreloc.x
@@ -223,9 +219,9 @@ fun dreloc.draw ( -- ) {
 	dreloc.is-walking if {
 		{ dreloc.walk-frame dreloc.WALK_FRAMES_DELAY } div sth
 		sth-kr 0 eq if { (frame) }
-		sth-kr 1 eq if { (frame) dreloc.FRAME_STRIDE add }
+		sth-kr 1 eq if { (frame) dreloc.FRAME_STRIDE add -> (frame) }
 		sth-kr 2 eq if { (frame) }
-		sth-kr 3 eq if { (frame) dreloc.FRAME_STRIDE 2* mul add }
+		sth-kr 3 eq if { (frame) dreloc.FRAME_STRIDE 2* mul add -> (frame) }
 		pop-r
 	} -> (frame)
 
@@ -277,9 +273,7 @@ fun dreloc.draw-shadow ( -- ) {
 // Utils
 // ==============================
 
-// ( value min max -- result )
-fun clamp ( short short short -- short ) {
-	-> (value min max)
+fun clamp ( short:value short:min short:max -- short ) {
 	sth sth
 
 	sth-r lth-k (value min _) if { pop-r nip return } else { pop }
@@ -288,7 +282,6 @@ fun clamp ( short short short -- short ) {
 }
 
 // Snap value to the grid
-// ( value -- snapped )
 fun snap ( short -- short ) {
 	GRID_SIZE div GRID_SIZE mul
 }
