@@ -53,10 +53,6 @@ const short dreloc.FRAME_STRIDE      { 1728* } // data offset between frames in 
 // Variables
 // ==============================
 
-var short a
-var short b
-var short c
-
 var short mouse.prev.x
 var short mouse.prev.y
 
