@@ -51,16 +51,23 @@ const short dreloc.FRAME_STRIDE      { 1728* } // data offset between frames in 
 // Variables
 // ==============================
 
-var short mouse.prev.x
-var short mouse.prev.y
+struct Cursor {
+	short : prev.x
+	short : prev.y
+}
 
-var short dreloc.x
-var short dreloc.y
-var short dreloc.target.x
-var short dreloc.target.y
-var byte  dreloc.walk-frame
-var byte  dreloc.is-walking
-var Dir   dreloc.walk-dir
+struct Dreloc {
+	short : x
+	short : y
+	short : target.x
+	short : target.y
+	byte  : walk-frame
+	byte  : is-walking
+	Dir   : walk-dir
+}
+
+var Cursor cursor
+var Dreloc dreloc
 
 // ==============================
 // Vectors
@@ -87,8 +94,8 @@ fun on-screen ( -> ) {
 
 	dreloc.update
 
-	{ dreloc.y dreloc.HEIGHT add } 128* 38* add gth
-	{ dreloc.y dreloc.HEIGHT add } 128* 38* add eq
+	{ dreloc:y dreloc.HEIGHT add } 128* 38* add gth
+	{ dreloc:y dreloc.HEIGHT add } 128* 38* add eq
 	or if {
 		&sprite.flower-1 Screen.addr output
 		0b00100110 Screen.auto output
@@ -105,7 +112,7 @@ fun on-screen ( -> ) {
 	dreloc.draw-shadow
 	dreloc.draw
 
-	{ dreloc.y dreloc.HEIGHT add } 128* 38* add lth if {
+	{ dreloc:y dreloc.HEIGHT add } 128* 38* add lth if {
 		&sprite.flower-1 Screen.addr output
 		0b00100110 Screen.auto output
 		128* Screen.x output
@@ -120,17 +127,17 @@ fun on-screen ( -> ) {
 }
 
 fun on-mouse ( -> ) {
-	&cursor Screen.addr output
+	&sprite.cursor Screen.addr output
 	0 Screen.auto output
 
 	// Clear previous cursor
-	mouse.prev.x Screen.x output
-	mouse.prev.y Screen.y output
+	cursor:prev.x Screen.x output
+	cursor:prev.y Screen.y output
 	0b01000000 Screen.sprite output
 
 	// Draw new cursor
-	Mouse.x input2 { dup -> mouse.prev.x } Screen.x output
-	Mouse.y input2 { dup -> mouse.prev.y } Screen.y output
+	Mouse.x input2 { dup -> cursor:prev.x } Screen.x output
+	Mouse.y input2 { dup -> cursor:prev.y } Screen.y output
 	0b01000001 Screen.sprite output
 
 	Mouse.state input if {
@@ -146,73 +153,73 @@ fun dreloc.set-target-pos ( short:x short:y -- ) {
 	{
 		{ (y) snap } dreloc.HEIGHT SCREEN_HEIGHT clamp
 		dreloc.HEIGHT sub
-	} -> dreloc.target.y
+	} -> dreloc:target.y
 
 	{
 		{ (x) snap } { dreloc.WIDTH 2* div } { SCREEN_WIDTH dreloc.WIDTH 2* div sub } clamp
 		{ dreloc.WIDTH 2* div } sub
-	} -> dreloc.target.x
+	} -> dreloc:target.x
 }
 
 fun dreloc.move ( Dir:dir -- ) {
 	dup (dir) Dir.right eq if {
 		// Move right
-		dreloc.x dreloc.WALK_SPEED add -> dreloc.x
+		dreloc:x dreloc.WALK_SPEED add -> dreloc:x
 	} elif dup (dir) Dir.left eq {
 		// Move left
-		dreloc.x dreloc.WALK_SPEED sub -> dreloc.x
+		dreloc:x dreloc.WALK_SPEED sub -> dreloc:x
 	} elif dup (dir) Dir.down eq {
 		// Move down
-		dreloc.y dreloc.WALK_SPEED add -> dreloc.y
+		dreloc:y dreloc.WALK_SPEED add -> dreloc:y
 	} elif dup (dir) Dir.up eq {
 		// Move up
-		dreloc.y dreloc.WALK_SPEED sub -> dreloc.y
+		dreloc:y dreloc.WALK_SPEED sub -> dreloc:y
 	}
 
-	(dir) -> dreloc.walk-dir
-	1     -> dreloc.is-walking
+	(dir) -> dreloc:walk-dir
+	1     -> dreloc:is-walking
 }
 
 fun dreloc.update ( -- ) {
-	0 -> dreloc.is-walking
+	0 -> dreloc:is-walking
 
 	// Move to target
-	dreloc.x dreloc.target.x eq if {
+	dreloc:x dreloc:target.x eq if {
 		// Move vertically
-		dreloc.y dreloc.target.y neq if {
-			/**/ dreloc.y dreloc.target.y lth if { Dir.down dreloc.move }
-			elif dreloc.y dreloc.target.y gth    { Dir.up dreloc.move }
+		dreloc:y dreloc:target.y neq if {
+			/**/ dreloc:y dreloc:target.y lth if { Dir.down dreloc.move }
+			elif dreloc:y dreloc:target.y gth    { Dir.up dreloc.move }
 		}
 	} else {
 		// Move horizontally
-		/**/ dreloc.x dreloc.target.x lth if { Dir.right dreloc.move }
-		elif dreloc.x dreloc.target.x gth    { Dir.left dreloc.move }
+		/**/ dreloc:x dreloc:target.x lth if { Dir.right dreloc.move }
+		elif dreloc:x dreloc:target.x gth    { Dir.left dreloc.move }
 	}
 
-	dreloc.is-walking if {
+	dreloc:is-walking if {
 		dreloc.update-walk-anim
 	} else {
-		dreloc.WALK_FRAMES_DELAY 2 div -> dreloc.walk-frame
+		dreloc.WALK_FRAMES_DELAY 2 div -> dreloc:walk-frame
 	}
 }
 
 fun dreloc.update-walk-anim ( -- ) {
-	dreloc.walk-frame inc -> (frame)
+	dreloc:walk-frame inc -> (frame)
 	(frame) dup { dreloc.WALK_FRAMES dreloc.WALK_FRAMES_DELAY mul }
 	eq if { (frame) pop 0 -> (frame) }
 
-	(frame) -> dreloc.walk-frame
+	(frame) -> dreloc:walk-frame
 }
 
 fun dreloc.draw ( -- ) {
-	/**/ dreloc.walk-dir Dir.down  eq if { 0* }
-	elif dreloc.walk-dir Dir.left  eq    { dreloc.FRAME_STRIDE 3* mul }
-	elif dreloc.walk-dir Dir.up    eq    { dreloc.FRAME_STRIDE 6* mul }
-	elif dreloc.walk-dir Dir.right eq    { dreloc.FRAME_STRIDE 9* mul }
+	/**/ dreloc:walk-dir Dir.down  eq if { 0* }
+	elif dreloc:walk-dir Dir.left  eq    { dreloc.FRAME_STRIDE 3* mul }
+	elif dreloc:walk-dir Dir.up    eq    { dreloc.FRAME_STRIDE 6* mul }
+	elif dreloc:walk-dir Dir.right eq    { dreloc.FRAME_STRIDE 9* mul }
 	else { 0* } -> (frame)
 
-	dreloc.is-walking if {
-		{ dreloc.walk-frame dreloc.WALK_FRAMES_DELAY } div sth
+	dreloc:is-walking if {
+		{ dreloc:walk-frame dreloc.WALK_FRAMES_DELAY } div sth
 		/**/ sth-kr 0 eq if { (frame) }
 		elif sth-kr 1 eq    { (frame) dreloc.FRAME_STRIDE add -> (frame) }
 		elif sth-kr 2 eq    { (frame) }
@@ -222,8 +229,8 @@ fun dreloc.draw ( -- ) {
 
 	(frame) &sprite.dreloc add Screen.addr output
 
-	dreloc.x Screen.x output
-	dreloc.y Screen.y output
+	dreloc:x Screen.x output
+	dreloc:y Screen.y output
 
 	0b10000110 Screen.auto output
 	0b10000000 dreloc.COLOR or Screen.sprite
@@ -243,8 +250,8 @@ fun dreloc.draw ( -- ) {
 
 fun dreloc.draw-shadow ( -- ) {
 	// Place shadow somewhere below Dreloc
-	{ dreloc.x dreloc.WIDTH 2* div 4* sub add } Screen.x output
-	{ dreloc.y dreloc.HEIGHT 26* sub add }      Screen.y output
+	{ dreloc:x dreloc.WIDTH 2* div 4* sub add } Screen.x output
+	{ dreloc:y dreloc.HEIGHT 26* sub add }      Screen.y output
 
 	0b00100110 Screen.auto output
 
@@ -257,7 +264,7 @@ fun dreloc.draw-shadow ( -- ) {
 	// Left flipped part
 	{
 		// TODO: refactor Y position into a constant when i implement local symbols...
-		{ dreloc.y dreloc.HEIGHT 26* sub add } Screen.y output
+		{ dreloc:y dreloc.HEIGHT 26* sub add } Screen.y output
 
 		&sprite.dreloc-shadow Screen.addr output
 		0b00010000 10 or Screen.sprite output-k output-k output-k output
@@ -285,7 +292,7 @@ fun snap ( short -- short ) {
 // Assets
 // ==============================
 
-data cursor {
+data sprite.cursor {
 	0b11000000
 	0b11100000
 	0b11110000
