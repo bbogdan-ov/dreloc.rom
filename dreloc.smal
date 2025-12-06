@@ -2,42 +2,40 @@
 // Devices
 // ==============================
 
-// TODO!: remove `as (Enum)` when i implement constant casting...
-
-enum byte System {
-	r     { 0x08 as (System) }
-	g     { 0x0a as (System) }
-	b     { 0x0c as (System) }
-	debug { 0x0e as (System) }
+untyped enum byte System {
+	r     { 0x08 }
+	g     { 0x0a }
+	b     { 0x0c }
+	debug { 0x0e }
 }
 
-enum byte Screen {
-	vector { 0x20 as (Screen) }
-	width  { 0x22 as (Screen) }
-	height { 0x24 as (Screen) }
-	auto   { 0x26 as (Screen) }
-	x      { 0x28 as (Screen) }
-	y      { 0x2a as (Screen) }
-	addr   { 0x2c as (Screen) }
-	pixel  { 0x2e as (Screen) }
-	sprite { 0x2f as (Screen) }
+untyped enum byte Screen {
+	vector { 0x20 }
+	width  { 0x22 }
+	height { 0x24 }
+	auto   { 0x26 }
+	x      { 0x28 }
+	y      { 0x2a }
+	addr   { 0x2c }
+	pixel  { 0x2e }
+	sprite { 0x2f }
 }
 
-enum byte Mouse {
-	vector { 0x90 as (Mouse) }
-	x      { 0x92 as (Mouse) }
-	y      { 0x94 as (Mouse) }
-	state  { 0x96 as (Mouse) }
+untyped enum byte Mouse {
+	vector { 0x90 }
+	x      { 0x92 }
+	y      { 0x94 }
+	state  { 0x96 }
 }
 
 // ==============================
 // Constants
 // ==============================
 
+enum byte Dir { down left up right }
+
 const short SCREEN_WIDTH { 512* }
 const short SCREEN_HEIGHT { 512* }
-
-enum byte Dir { down left up right }
 
 const short GRID_SIZE { 16* }
 
