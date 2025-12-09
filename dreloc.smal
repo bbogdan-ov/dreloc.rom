@@ -262,7 +262,7 @@ fun dreloc.draw ( -- ) {
 		elif sth-kr 2 eq    { (frame) }
 		elif sth-kr 3 eq    { (frame) dreloc.FRAME_STRIDE 2* mul add -> (frame) }
 		pop-r
-	} -> (frame)
+	}
 
 	(frame) &sprite.dreloc add Screen.addr output
 
