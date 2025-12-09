@@ -28,7 +28,7 @@ output = []
 for row in range(h):
     for col in range(w):
         pixel = pixels[col, row]
-        value = min(pixel[0], pixel[3])
+        value = min(max(pixel[0], 100), pixel[3])
 
         output.append(value * 3 // 255)
 
