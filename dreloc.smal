@@ -28,6 +28,18 @@ untyped enum byte Mouse {
 	state  { 0x96 }
 }
 
+untyped enum byte DateTime {
+	year   { 0xc0 }
+	month  { 0xc2 }
+	day    { 0xc3 }
+	hour   { 0xc4 }
+	minute { 0xc5 }
+	second { 0xc6 }
+	dotw   { 0xc7 }
+	doty   { 0xc8 }
+	isdst  { 0xca }
+}
+
 // ==============================
 // Constants
 // ==============================
@@ -66,8 +78,16 @@ struct Dreloc {
 	Dir   : walk-dir
 }
 
+struct Flower {
+	short : x
+}
+
 var Cursor cursor
 var Dreloc dreloc
+var [64]Flower flowers
+const byte  flowers.COUNT { 64 }
+const short flowers.GAP_Y { 8* }
+const short flower.HEIGHT { 38* }
 
 // ==============================
 // Vectors
@@ -78,11 +98,20 @@ fun on-reset ( -> ) {
 	0xf0af* System.g output
 	0xf0af* System.b output
 
+	prng.init
+
 	SCREEN_WIDTH  Screen.width output
 	SCREEN_HEIGHT Screen.height output
 
 	&on-screen Screen.vector output
 	&on-mouse  Mouse.vector output
+
+	// Populate flowers
+	0 while dup flowers.COUNT lth {
+		sth
+		{ prng SCREEN_WIDTH mod } sth-rk -> flowers[]:x
+		sth-r inc
+	} pop
 }
 
 fun on-screen ( -> ) {
@@ -94,36 +123,48 @@ fun on-screen ( -> ) {
 
 	dreloc.update
 
-	{ dreloc:y dreloc.HEIGHT add } 128* 38* add gth
-	{ dreloc:y dreloc.HEIGHT add } 128* 38* add eq
-	or if {
-		&sprite.flower-1 Screen.addr output
-		0b00100110 Screen.auto output
-		128* Screen.x output
-		128* Screen.y output
-		0b10000000 5 or Screen.sprite
-			output-k
-			output-k
-			output-k
-			output-k
-			output
-	}
+	// Draw flowers below dreloc
+	0 -> (idx) while dup flowers.COUNT lth {
+		(idx) sth
+
+		{ sth-rk to-short flowers.GAP_Y mul flower.HEIGHT add }
+		{ dreloc:y dreloc.HEIGHT add }
+		gth not if {
+			sth-rk flower.draw
+		}
+
+		sth-r inc
+	} pop
 
 	dreloc.draw-shadow
 	dreloc.draw
 
-	{ dreloc:y dreloc.HEIGHT add } 128* 38* add lth if {
-		&sprite.flower-1 Screen.addr output
-		0b00100110 Screen.auto output
-		128* Screen.x output
-		128* Screen.y output
-		0b10000000 5 or Screen.sprite
-			output-k
-			output-k
-			output-k
-			output-k
-			output
-	}
+	// Draw flowers above dreloc
+	0 -> (idx) while dup flowers.COUNT lth {
+		(idx) sth
+
+		{ sth-rk to-short flowers.GAP_Y mul flower.HEIGHT add }
+		{ dreloc:y dreloc.HEIGHT add }
+		gth if {
+			sth-rk flower.draw
+		}
+
+		sth-r inc
+	} pop
+}
+
+fun flower.draw ( byte:idx -- ) {
+	{ (idx) dup flowers[]:x }            Screen.x output
+	{ (idx) to-short flowers.GAP_Y mul } Screen.y output
+
+	&sprite.flower-1 Screen.addr output
+	0b00100110 Screen.auto output
+	0b10000000 5 or Screen.sprite
+		output-k
+		output-k
+		output-k
+		output-k
+		output
 }
 
 fun on-mouse ( -> ) {
@@ -286,6 +327,34 @@ fun clamp ( short:value short:min short:max -- short ) {
 // Snap value to the grid
 fun snap ( short -- short ) {
 	GRID_SIZE div GRID_SIZE mul
+}
+
+fun to-short ( byte -- short ) { 0 swap as (short) }
+fun not ( byte -- byte ) { 0 eq }
+fun mod ( short:num short:divisor -- short:remainder ) { div-k mul sub }
+
+// Pseudo-random functions ported from UXNTAL
+// https://wiki.xxiivv.com/site/uxntal_software.html
+
+var short prng.x
+var short prng.y
+
+fun prng.init ( -- ) {
+	0 DateTime.second input as (short)
+		0 DateTime.minute input as (short) 0x60 shift xor
+		0 DateTime.hour   input as (short) 0xc0 shift xor -> prng.x
+	0 DateTime.hour input as (short) 0x04 shift
+		0 DateTime.day   input as (short) 0x10 shift xor
+		0 DateTime.month input as (short) 0x60 shift xor
+		DateTime.year input2 0xa0 shift xor -> prng.y
+}
+fun prng ( -- short ) {
+	prng.x
+		dup 0x50 shift xor
+		dup 0x03 shift xor
+	prng.y dup -> prng.x
+		dup 0x01 shift xor xor
+		&prng.y store-k pop
 }
 
 // ==============================
