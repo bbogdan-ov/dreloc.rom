@@ -126,41 +126,12 @@ fun on-screen ( -> ) {
 	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } 8* div as (byte byte) nip -> (idx)
 
 	// Draw flowers above dreloc
-	(idx) sth
-	0 while dup sth-rk lth {
-		dup flower-draw
-		inc
-	} pop sth-r (idx)
+	(idx) dup flowers-draw-below
 
 	dreloc-draw-shadow
 	dreloc-draw
 
-	// Draw flowers above dreloc
-	(idx) while dup FLOWERS_COUNT lth {
-		dup flower-draw
-		inc
-	} pop
-}
-
-fun flower-draw ( byte:idx -- ) {
-	{ (idx) dup flowers[].x }                Screen.x output
-	{ (idx) dup to-short FLOWERS_GAP_Y mul } Screen.y output
-
-	(idx) to-short 3* mod sth
-	/**/ sth-rk 0* eq if { &sprite-flower-1 }
-	elif sth-rk 1* eq    { &sprite-flower-2 }
-	elif sth-rk 2* eq    { &sprite-flower-3 }
-	else                 { &sprite-flower-1 }
-	pop-r
-
-	Screen.addr output
-	0b00010110 Screen.auto output
-	0b10000000 5 or Screen.sprite
-		output-k
-		output-k
-		output-k
-		output-k
-		output
+	(idx) flowers-draw-above
 }
 
 fun on-mouse ( -> ) {
@@ -306,6 +277,47 @@ fun dreloc-draw-shadow ( -- ) {
 		&sprite-dreloc-shadow Screen.addr output
 		0b00010000 10 or Screen.sprite output-k output-k output-k output
 	}
+}
+
+// ==============================
+// Flowers
+// ==============================
+
+fun flowers-draw-below ( byte:end-idx -- ) {
+	sth
+	0 while dup sth-rk lth {
+		dup flower-draw
+		inc
+	} pop
+	pop-r
+}
+
+fun flowers-draw-above ( byte:start-idx -- ) {
+	while dup FLOWERS_COUNT lth {
+		dup flower-draw
+		inc
+	} pop
+}
+
+fun flower-draw ( byte:idx -- ) {
+	{ (idx) dup flowers[].x }                Screen.x output
+	{ (idx) dup to-short FLOWERS_GAP_Y mul } Screen.y output
+
+	(idx) to-short 3* mod sth
+	/**/ sth-rk 0* eq if { &sprite-flower-1 }
+	elif sth-rk 1* eq    { &sprite-flower-2 }
+	elif sth-rk 2* eq    { &sprite-flower-3 }
+	else                 { &sprite-flower-1 }
+	pop-r
+
+	Screen.addr output
+	0b00010110 Screen.auto output
+	0b10000000 5 or Screen.sprite
+		output-k
+		output-k
+		output-k
+		output-k
+		output
 }
 
 // ==============================
