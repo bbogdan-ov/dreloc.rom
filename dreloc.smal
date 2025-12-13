@@ -51,43 +51,43 @@ const short SCREEN_HEIGHT { 512* }
 
 const short GRID_SIZE { 16* }
 
-const short dreloc.WIDTH             { 72* }
-const short dreloc.HEIGHT            { 96* }
-const short dreloc.WALK_SPEED        { 2* }
-const byte  dreloc.WALK_FRAMES_DELAY { 8 } // delay between anim frames in game frames
-const byte  dreloc.COLOR             { 5 }
-const byte  dreloc.WALK_FRAMES       { 4 }
-const short dreloc.FRAME_STRIDE      { 1728* } // data offset between frames in bytes
+const short DRELOC_WIDTH             { 72* }
+const short DRELOC_HEIGHT            { 96* }
+const short DRELOC_WALK_SPEED        { 2* }
+const byte  DRELOC_WALK_FRAMES_DELAY { 8 } // delay between anim frames in game frames
+const byte  DRELOC_COLOR             { 5 }
+const byte  DRELOC_WALK_FRAMES       { 4 }
+const short DRELOC_FRAME_STRIDE      { 1728* } // data offset between frames in bytes
 
 // ==============================
 // Variables
 // ==============================
 
 struct Cursor {
-	short : prev.x
-	short : prev.y
+	short prev-x
+	short prev-y
 }
 
 struct Dreloc {
-	short : x
-	short : y
-	short : target.x
-	short : target.y
-	byte  : walk-frame
-	byte  : is-walking
-	Dir   : walk-dir
+	short x
+	short y
+	short target-x
+	short target-y
+	byte  walk-frame
+	byte  is-walking
+	Dir   walk-dir
 }
 
 struct Flower {
-	short : x
+	short x
 }
 
 var Cursor cursor
 var Dreloc dreloc
 var [60]Flower flowers
-const byte  flowers.COUNT { 60 }
-const short flowers.GAP_Y { 8* }
-const short flower.HEIGHT { 38* }
+const byte  FLOWERS_COUNT { 60 }
+const short FLOWERS_GAP_Y { 8* }
+const short FLOWER_HEIGHT { 38* }
 
 // ==============================
 // Vectors
@@ -98,7 +98,7 @@ fun on-reset ( -> ) {
 	0xf0af* System.g output
 	0xf0af* System.b output
 
-	prng.init
+	prng-init
 
 	SCREEN_WIDTH  Screen.width output
 	SCREEN_HEIGHT Screen.height output
@@ -107,9 +107,9 @@ fun on-reset ( -> ) {
 	&on-mouse  Mouse.vector output
 
 	// Populate flowers
-	0 while dup flowers.COUNT lth {
+	0 while dup FLOWERS_COUNT lth {
 		sth
-		{ prng SCREEN_WIDTH mod } sth-rk -> flowers[]:x
+		{ prng SCREEN_WIDTH mod } sth-rk -> flowers[].x
 		sth-r inc
 	} pop
 }
@@ -121,36 +121,36 @@ fun on-screen ( -> ) {
 	0* Screen.y output
 	0b10000000 Screen.pixel output
 
-	dreloc.update
+	dreloc-update
 
-	{ dreloc:y dreloc.HEIGHT add flower.HEIGHT sub } 8* div as (byte byte) nip -> (idx)
+	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } 8* div as (byte byte) nip -> (idx)
 
 	// Draw flowers above dreloc
 	(idx) sth
 	0 while dup sth-rk lth {
-		dup flower.draw
+		dup flower-draw
 		inc
 	} pop sth-r (idx)
 
-	dreloc.draw-shadow
-	dreloc.draw
+	dreloc-draw-shadow
+	dreloc-draw
 
 	// Draw flowers above dreloc
-	(idx) while dup flowers.COUNT lth {
-		dup flower.draw
+	(idx) while dup FLOWERS_COUNT lth {
+		dup flower-draw
 		inc
 	} pop
 }
 
-fun flower.draw ( byte:idx -- ) {
-	{ (idx) dup flowers[]:x }                Screen.x output
-	{ (idx) dup to-short flowers.GAP_Y mul } Screen.y output
+fun flower-draw ( byte:idx -- ) {
+	{ (idx) dup flowers[].x }                Screen.x output
+	{ (idx) dup to-short FLOWERS_GAP_Y mul } Screen.y output
 
 	(idx) to-short 3* mod sth
-	/**/ sth-rk 0* eq if { &sprite.flower-1 }
-	elif sth-rk 1* eq    { &sprite.flower-2 }
-	elif sth-rk 2* eq    { &sprite.flower-3 }
-	else                 { &sprite.flower-1 }
+	/**/ sth-rk 0* eq if { &sprite-flower-1 }
+	elif sth-rk 1* eq    { &sprite-flower-2 }
+	elif sth-rk 2* eq    { &sprite-flower-3 }
+	else                 { &sprite-flower-1 }
 	pop-r
 
 	Screen.addr output
@@ -164,21 +164,21 @@ fun flower.draw ( byte:idx -- ) {
 }
 
 fun on-mouse ( -> ) {
-	&sprite.cursor Screen.addr output
+	&sprite-cursor Screen.addr output
 	0 Screen.auto output
 
 	// Clear previous cursor
-	cursor:prev.x Screen.x output
-	cursor:prev.y Screen.y output
+	cursor.prev-x Screen.x output
+	cursor.prev-y Screen.y output
 	0b01000000 Screen.sprite output
 
 	// Draw new cursor
-	Mouse.x input2 { dup -> cursor:prev.x } Screen.x output
-	Mouse.y input2 { dup -> cursor:prev.y } Screen.y output
+	Mouse.x input2 { dup -> cursor.prev-x } Screen.x output
+	Mouse.y input2 { dup -> cursor.prev-y } Screen.y output
 	0b01000001 Screen.sprite output
 
 	Mouse.state input if {
-		{ Mouse.x input2 } { Mouse.y input2 } dreloc.set-target-pos
+		{ Mouse.x input2 } { Mouse.y input2 } dreloc-set-target-pos
 	}
 }
 
@@ -186,91 +186,91 @@ fun on-mouse ( -> ) {
 // Dreloc
 // ==============================
 
-fun dreloc.set-target-pos ( short:x short:y -- ) {
+fun dreloc-set-target-pos ( short:x short:y -- ) {
 	{
-		{ (y) snap } dreloc.HEIGHT SCREEN_HEIGHT clamp
-		dreloc.HEIGHT sub
-	} -> dreloc:target.y
+		{ (y) snap } DRELOC_HEIGHT SCREEN_HEIGHT clamp
+		DRELOC_HEIGHT sub
+	} -> dreloc.target-y
 
 	{
-		{ (x) snap } { dreloc.WIDTH 2* div } { SCREEN_WIDTH dreloc.WIDTH 2* div sub } clamp
-		{ dreloc.WIDTH 2* div } sub
-	} -> dreloc:target.x
+		{ (x) snap } { DRELOC_WIDTH 2* div } { SCREEN_WIDTH DRELOC_WIDTH 2* div sub } clamp
+		{ DRELOC_WIDTH 2* div } sub
+	} -> dreloc.target-x
 }
 
-fun dreloc.move ( Dir:dir -- ) {
+fun dreloc-move ( Dir:dir -- ) {
 	dup (dir) Dir.right eq if {
 		// Move right
-		dreloc:x dreloc.WALK_SPEED add -> dreloc:x
+		dreloc.x DRELOC_WALK_SPEED add -> dreloc.x
 	} elif dup (dir) Dir.left eq {
 		// Move left
-		dreloc:x dreloc.WALK_SPEED sub -> dreloc:x
+		dreloc.x DRELOC_WALK_SPEED sub -> dreloc.x
 	} elif dup (dir) Dir.down eq {
 		// Move down
-		dreloc:y dreloc.WALK_SPEED add -> dreloc:y
+		dreloc.y DRELOC_WALK_SPEED add -> dreloc.y
 	} elif dup (dir) Dir.up eq {
 		// Move up
-		dreloc:y dreloc.WALK_SPEED sub -> dreloc:y
+		dreloc.y DRELOC_WALK_SPEED sub -> dreloc.y
 	}
 
-	(dir) -> dreloc:walk-dir
-	1     -> dreloc:is-walking
+	(dir) -> dreloc.walk-dir
+	1     -> dreloc.is-walking
 }
 
-fun dreloc.update ( -- ) {
-	0 -> dreloc:is-walking
+fun dreloc-update ( -- ) {
+	0 -> dreloc.is-walking
 
 	// Move to target
-	dreloc:x dreloc:target.x eq if {
+	dreloc.x dreloc.target-x eq if {
 		// Move vertically
-		dreloc:y dreloc:target.y neq if {
-			/**/ dreloc:y dreloc:target.y lth if { Dir.down dreloc.move }
-			elif dreloc:y dreloc:target.y gth    { Dir.up dreloc.move }
+		dreloc.y dreloc.target-y neq if {
+			/**/ dreloc.y dreloc.target-y lth if { Dir.down dreloc-move }
+			elif dreloc.y dreloc.target-y gth    { Dir.up dreloc-move }
 		}
 	} else {
 		// Move horizontally
-		/**/ dreloc:x dreloc:target.x lth if { Dir.right dreloc.move }
-		elif dreloc:x dreloc:target.x gth    { Dir.left dreloc.move }
+		/**/ dreloc.x dreloc.target-x lth if { Dir.right dreloc-move }
+		elif dreloc.x dreloc.target-x gth    { Dir.left dreloc-move }
 	}
 
-	dreloc:is-walking if {
-		dreloc.update-walk-anim
+	dreloc.is-walking if {
+		dreloc-update-walk-anim
 	} else {
-		dreloc.WALK_FRAMES_DELAY 2 div -> dreloc:walk-frame
+		DRELOC_WALK_FRAMES_DELAY 2 div -> dreloc.walk-frame
 	}
 }
 
-fun dreloc.update-walk-anim ( -- ) {
-	dreloc:walk-frame inc -> (frame)
-	(frame) dup { dreloc.WALK_FRAMES dreloc.WALK_FRAMES_DELAY mul }
+fun dreloc-update-walk-anim ( -- ) {
+	dreloc.walk-frame inc -> (frame)
+	(frame) dup { DRELOC_WALK_FRAMES DRELOC_WALK_FRAMES_DELAY mul }
 	eq if { (frame) pop 0 -> (frame) }
 
-	(frame) -> dreloc:walk-frame
+	(frame) -> dreloc.walk-frame
 }
 
-fun dreloc.draw ( -- ) {
-	/**/ dreloc:walk-dir Dir.down  eq if { 0* }
-	elif dreloc:walk-dir Dir.left  eq    { dreloc.FRAME_STRIDE 3* mul }
-	elif dreloc:walk-dir Dir.up    eq    { dreloc.FRAME_STRIDE 6* mul }
-	elif dreloc:walk-dir Dir.right eq    { dreloc.FRAME_STRIDE 9* mul }
+fun dreloc-draw ( -- ) {
+	/**/ dreloc.walk-dir Dir.down  eq if { 0* }
+	elif dreloc.walk-dir Dir.left  eq    { DRELOC_FRAME_STRIDE 3* mul }
+	elif dreloc.walk-dir Dir.up    eq    { DRELOC_FRAME_STRIDE 6* mul }
+	elif dreloc.walk-dir Dir.right eq    { DRELOC_FRAME_STRIDE 9* mul }
 	else { 0* } -> (frame)
 
-	dreloc:is-walking if {
-		{ dreloc:walk-frame dreloc.WALK_FRAMES_DELAY } div sth
+	dreloc.is-walking if {
+		{ dreloc.walk-frame DRELOC_WALK_FRAMES_DELAY } div sth
 		/**/ sth-kr 0 eq if { (frame) }
-		elif sth-kr 1 eq    { (frame) dreloc.FRAME_STRIDE add -> (frame) }
+		elif sth-kr 1 eq    { (frame) DRELOC_FRAME_STRIDE add -> (frame) }
 		elif sth-kr 2 eq    { (frame) }
-		elif sth-kr 3 eq    { (frame) dreloc.FRAME_STRIDE 2* mul add -> (frame) }
+		elif sth-kr 3 eq    { (frame) DRELOC_FRAME_STRIDE 2* mul add -> (frame) }
 		pop-r
 	}
 
-	(frame) &sprite.dreloc add Screen.addr output
+	(frame) &sprite-dreloc add Screen.addr output
 
-	dreloc:x Screen.x output
-	dreloc:y Screen.y output
+	dreloc.x Screen.x output
+	dreloc.y Screen.y output
 
 	0b10000110 Screen.auto output
-	0b10000000 dreloc.COLOR or Screen.sprite
+	0b10000000 DRELOC_COLOR or Screen.sprite
 		output-k
 		output-k
 		output-k
@@ -285,25 +285,25 @@ fun dreloc.draw ( -- ) {
 		output
 }
 
-fun dreloc.draw-shadow ( -- ) {
+fun dreloc-draw-shadow ( -- ) {
 	// Place shadow somewhere below Dreloc
-	{ dreloc:x dreloc.WIDTH 2* div 4* sub add } Screen.x output
-	{ dreloc:y dreloc.HEIGHT 26* sub add }      Screen.y output
+	{ dreloc.x DRELOC_WIDTH 2* div 4* sub add } Screen.x output
+	{ dreloc.y DRELOC_HEIGHT 26* sub add }      Screen.y output
 
 	0b00100110 Screen.auto output
 
 	// Right part
 	{
-		&sprite.dreloc-shadow Screen.addr output
+		&sprite-dreloc-shadow Screen.addr output
 		10 Screen.sprite output-k output-k output-k output
 	}
 
 	// Left flipped part
 	{
 		// TODO: refactor Y position into a constant when i implement local symbols...
-		{ dreloc:y dreloc.HEIGHT 26* sub add } Screen.y output
+		{ dreloc.y DRELOC_HEIGHT 26* sub add } Screen.y output
 
-		&sprite.dreloc-shadow Screen.addr output
+		&sprite-dreloc-shadow Screen.addr output
 		0b00010000 10 or Screen.sprite output-k output-k output-k output
 	}
 }
@@ -332,32 +332,32 @@ fun mod ( short:num short:divisor -- short:remainder ) { div-k mul sub }
 // Pseudo-random functions ported from UXNTAL
 // https://wiki.xxiivv.com/site/uxntal_software.html
 
-var short prng.x
-var short prng.y
+var short prng-x
+var short prng-y
 
-fun prng.init ( -- ) {
+fun prng-init ( -- ) {
 	0 DateTime.second input as (short)
 		0 DateTime.minute input as (short) 0x60 shift xor
-		0 DateTime.hour   input as (short) 0xc0 shift xor -> prng.x
+		0 DateTime.hour   input as (short) 0xc0 shift xor -> prng-x
 	0 DateTime.hour input as (short) 0x04 shift
 		0 DateTime.day   input as (short) 0x10 shift xor
 		0 DateTime.month input as (short) 0x60 shift xor
-		DateTime.year input2 0xa0 shift xor -> prng.y
+		DateTime.year input2 0xa0 shift xor -> prng-y
 }
 fun prng ( -- short ) {
-	prng.x
+	prng-x
 		dup 0x50 shift xor
 		dup 0x03 shift xor
-	prng.y dup -> prng.x
+	prng-y dup -> prng-x
 		dup 0x01 shift xor xor
-		&prng.y store-k pop
+		&prng-y store-k pop
 }
 
 // ==============================
 // Assets
 // ==============================
 
-data sprite.cursor {
+data sprite-cursor {
 	0b11000000
 	0b11100000
 	0b11110000
@@ -368,7 +368,7 @@ data sprite.cursor {
 	0b00000000
 }
 
-data sprite.flower-1 {
+data sprite-flower-1 {
 	0x00 0x00 0x00 0x00 0x00 0x00 0x0f 0x1b 0x00 0x00 0x00 0x00
 	0x00 0x0f 0x1f 0x3f 0x00 0x00 0x00 0x00 0x00 0x00 0x78 0x58
 	0x00 0x00 0x00 0x00 0x00 0x78 0xfc 0xfc 0x15 0x2a 0xf1 0xbb
@@ -385,7 +385,7 @@ data sprite.flower-1 {
 	0xdc 0xb4 0x40 0x00
 }
 
-data sprite.flower-2 {
+data sprite-flower-2 {
 	0x00 0x00 0x00 0x10 0x18 0x0e 0x08 0x4d 0x00 0x00 0x00 0x08
 	0x0e 0x07 0x67 0x3e 0x00 0x00 0x00 0x00 0x08 0x38 0x50 0xa0
 	0x00 0x00 0x00 0x0c 0x3c 0xfc 0xf8 0x70 0x3d 0x1b 0x0b 0x0e
@@ -402,7 +402,7 @@ data sprite.flower-2 {
 	0xd0 0x20 0x00 0x00
 }
 
-data sprite.flower-3 {
+data sprite-flower-3 {
 	0x00 0x00 0x00 0x00 0x00 0x00 0x01 0x02 0x00 0x00 0x00 0x00
 	0x00 0x01 0x03 0x1f 0x00 0x00 0x00 0x00 0x00 0x00 0xc0 0xc0
 	0x00 0x00 0x00 0x00 0x00 0xc0 0xe0 0xf0 0x19 0x1c 0x09 0x03
@@ -419,7 +419,7 @@ data sprite.flower-3 {
 	0xdc 0xa8 0x00 0x00
 }
 
-data sprite.dreloc-shadow {
+data sprite-dreloc-shadow {
 	0x00 0x00 0x00 0x40 0xaa 0x55 0xaa 0xff 0x00 0x00 0x00 0x00
 	0x00 0x00 0xaa 0x55 0x00 0x00 0x00 0x00 0x00 0x00 0x80 0x00
 	0xff 0xff 0xff 0xff 0xff 0xff 0xff 0xff 0xaa 0xf7 0xea 0xff
@@ -430,7 +430,7 @@ data sprite.dreloc-shadow {
 	0x00 0x00 0x00 0x00 0xa0 0x00 0x00 0x00 0x00 0x00 0x00 0x00
 }
 
-data sprite.dreloc {
+data sprite-dreloc {
 	0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
 	0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x07
 	0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00 0x00
