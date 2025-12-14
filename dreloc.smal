@@ -59,6 +59,7 @@ const byte  DRELOC_COLOR             { 5 }
 const byte  DRELOC_WALK_FRAMES       { 4 }
 const short DRELOC_FRAME_STRIDE      { 1728* } // data offset between frames in bytes
 
+const byte  FLOWER_BITS   { 0b10000101 }
 const short FLOWERS_COUNT { 94* }
 const short FLOWERS_GAP_Y { 5* }
 const short FLOWER_HEIGHT { 38* }
@@ -287,8 +288,7 @@ fun flowers-draw-above ( short:start-idx -- ) {
 
 fun flower-draw ( short:idx -- ) {
 	(idx) dup 3* mod sth
-	/**/ sth-rk 0* eq if { &sprite-flower-1 }
-	elif sth-rk 1* eq    { &sprite-flower-2 }
+	/**/ sth-rk 1* eq if { &sprite-flower-2 }
 	elif sth-rk 2* eq    { &sprite-flower-3 }
 	else                 { &sprite-flower-1 }
 	pop-r
@@ -296,29 +296,35 @@ fun flower-draw ( short:idx -- ) {
 	Screen.addr output
 	0b00010110 Screen.auto output
 
-	{ (idx) dup FLOWERS_GAP_Y mul } Screen.y output
+	{ dup (idx) FLOWERS_GAP_Y mul } Screen.y output
+	{ dup (idx) flowers[].x } -> (x)
 
-	// Draw the flower sprite
-	(idx) sth
-	0b10000101 Screen.sprite -> (bits dev)
-	{ sth-rk 60*  flower-calc-tilt } output-k
-	{ sth-rk 90*  flower-calc-tilt } output-k
-	{ sth-rk 120* flower-calc-tilt } output-k
-	{ sth-rk 150* flower-calc-tilt } output-k
-	{ sth-rk flowers[].x } Screen.x output
-	(bits dev) output
-	pop-r
+	// Calculate sine offset
+	{ dup (x) 80* div } { rot (idx) 10* div } add
+	{ elapsed 12* div } sub -> (sine-offset)
+
+	// Draw rows of the flower sprite
+	(x sine-offset)
+	over over 60*  flower-draw-row
+	over over 90*  flower-draw-row
+	over over 120* flower-draw-row
+	over over 150* flower-draw-row
+	(sine-offset) pop
+
+	// Draw the last (bottom) row of the sprite
+	(x)         Screen.x output
+	FLOWER_BITS Screen.sprite output
 }
 
 // Animate X position of a single flower sprite row using sine lookup table
-fun flower-calc-tilt ( short:idx short:divide -- ) {
-	(divide) sth
-	(idx) dup flowers[].x -> (x)
+fun flower-draw-row ( short:x short:sine-offset short:divide -- ) {
+	swap
 
-	{ (x) dup 80* div } { rot (idx) 10* div } add { elapsed 12* div } sub SINE_LOOKUP_N mod -> (lookup)
-	{ (lookup) sine-lookup[] to-short } sth-r (divide) div -> (tilt)
+	// Calculate X shifting/tilt for the row
+	(sine-offset) sin to-short swap (divide) div -> (tilt)
 
-	{ (x tilt) add } Screen.x output
+	(x tilt) add Screen.x output
+	FLOWER_BITS  Screen.sprite output
 }
 
 // ==============================
@@ -367,6 +373,14 @@ fun prng ( -- short ) {
 		&prng-y store-k pop
 }
 
+
+// Number of values inside `sine-lookup` table
+const short SINE_LOOKUP_N { 30* }
+data sine-lookup { include "assets/sine.bin" }
+
+fun sin ( short -- byte ) {
+	SINE_LOOKUP_N mod sine-lookup[]
+}
 // ==============================
 // Assets
 // ==============================
@@ -386,6 +400,3 @@ data sprite-dreloc   { include "assets/dreloc.chr" }
 data sprite-flower-1 { include "assets/flower-1.chr" }
 data sprite-flower-2 { include "assets/flower-2.chr" }
 data sprite-flower-3 { include "assets/flower-3.chr" }
-
-const short SINE_LOOKUP_N { 30* }
-data sine-lookup { include "assets/sine.bin" }
