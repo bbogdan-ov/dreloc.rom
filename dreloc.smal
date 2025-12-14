@@ -113,7 +113,7 @@ fun on-reset ( -> ) {
 
 fun on-screen ( -> ) {
 	// Clear the whole screen
-	// I think it is not that bad for performance...
+	// TODO: may be i should come up with a better way to redraw game objects
 	0* Screen.x output
 	0* Screen.y output
 	0b10000000 Screen.pixel output
