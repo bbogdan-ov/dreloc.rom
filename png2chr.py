@@ -5,6 +5,7 @@
 
 from PIL import Image
 import sys
+import os
 
 if len(sys.argv) < 3:
     print("USAGE: ./png2chr.py <icn|chr> <image>")
@@ -79,7 +80,10 @@ def a():
 
     return bytes_list
 
-with open(path + "." + typ, "wb") as file:
+target_path = os.path.basename(path)
+target_path = os.path.splitext(target_path)[0] + "." + typ
+target_path = "./assets/" + target_path
+with open(target_path, "wb") as file:
     file.write(a())
 
 img.close()

@@ -16,6 +16,6 @@ ffmpeg -loglevel repeat+error -y \
 	-i ./tmp/0010.png \
 	-i ./tmp/0011.png \
 	-filter_complex 'vstack=12' \
-	./tmp/dreloc-sheet.png
+	./tmp/dreloc.png
 
 rm ./tmp/00*.png
