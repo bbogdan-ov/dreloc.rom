@@ -59,6 +59,10 @@ const byte  DRELOC_COLOR             { 5 }
 const byte  DRELOC_WALK_FRAMES       { 4 }
 const short DRELOC_FRAME_STRIDE      { 1728* } // data offset between frames in bytes
 
+const short FLOWERS_COUNT { 60* }
+const short FLOWERS_GAP_Y { 8* }
+const short FLOWER_HEIGHT { 38* }
+
 // ==============================
 // Variables
 // ==============================
@@ -84,10 +88,8 @@ struct Flower {
 
 var Cursor cursor
 var Dreloc dreloc
-var [60]Flower flowers
-const byte  FLOWERS_COUNT { 60 }
-const short FLOWERS_GAP_Y { 8* }
-const short FLOWER_HEIGHT { 38* }
+
+rom var [60]Flower flowers
 
 // ==============================
 // Vectors
@@ -106,12 +108,7 @@ fun on-reset ( -> ) {
 	&on-screen Screen.vector output
 	&on-mouse  Mouse.vector output
 
-	// Populate flowers
-	0 while dup FLOWERS_COUNT lth {
-		sth
-		{ prng SCREEN_WIDTH mod } sth-rk -> flowers[].x
-		sth-r inc
-	} pop
+	flowers-populate
 }
 
 fun on-screen ( -> ) {
@@ -123,9 +120,9 @@ fun on-screen ( -> ) {
 
 	dreloc-update
 
-	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } 8* div as (byte byte) nip -> (idx)
+	// Calculate index used for slicing the array of flowers
+	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } FLOWERS_GAP_Y div -> (idx)
 
-	// Draw flowers above dreloc
 	(idx) dup flowers-draw-below
 
 	dreloc-draw-shadow
@@ -283,27 +280,35 @@ fun dreloc-draw-shadow ( -- ) {
 // Flowers
 // ==============================
 
-fun flowers-draw-below ( byte:end-idx -- ) {
+fun flowers-populate ( -- ) {
+	0* while dup FLOWERS_COUNT lth {
+		sth
+		{ prng SCREEN_WIDTH mod } sth-rk -> flowers[].x
+		sth-r inc
+	} pop
+}
+
+fun flowers-draw-below ( short:end-idx -- ) {
 	sth
-	0 while dup sth-rk lth {
+	0* while dup sth-rk lth {
 		dup flower-draw
 		inc
 	} pop
 	pop-r
 }
 
-fun flowers-draw-above ( byte:start-idx -- ) {
+fun flowers-draw-above ( short:start-idx -- ) {
 	while dup FLOWERS_COUNT lth {
 		dup flower-draw
 		inc
 	} pop
 }
 
-fun flower-draw ( byte:idx -- ) {
-	{ (idx) dup flowers[].x }                Screen.x output
-	{ (idx) dup to-short FLOWERS_GAP_Y mul } Screen.y output
+fun flower-draw ( short:idx -- ) {
+	{ (idx) dup flowers[].x }       Screen.x output
+	{ (idx) dup FLOWERS_GAP_Y mul } Screen.y output
 
-	(idx) to-short 3* mod sth
+	(idx) 3* mod sth
 	/**/ sth-rk 0* eq if { &sprite-flower-1 }
 	elif sth-rk 1* eq    { &sprite-flower-2 }
 	elif sth-rk 2* eq    { &sprite-flower-3 }
@@ -337,7 +342,6 @@ fun snap ( short -- short ) {
 	GRID_SIZE div GRID_SIZE mul
 }
 
-fun to-short ( byte -- short ) { 0 swap as (short) }
 fun not ( byte -- byte ) { 0 eq }
 fun mod ( short:num short:divisor -- short:remainder ) { div-k mul sub }
 
