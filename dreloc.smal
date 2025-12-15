@@ -339,10 +339,11 @@ fun campfire-draw ( -- ) {
 // Flowers
 // ==============================
 
+const short FLOWER_WIDTH  { 16* }
+const short FLOWER_HEIGHT { 38* }
 const byte  FLOWER_BITS   { 0b10000101 }
 const short FLOWERS_COUNT { 94* }
 const short FLOWERS_GAP_Y { 5* }
-const short FLOWER_HEIGHT { 38* }
 
 struct Flower {
 	short x
@@ -351,10 +352,27 @@ struct Flower {
 rom var [94]Flower flowers
 
 fun flowers-populate ( -- ) {
-	0* while dup FLOWERS_COUNT lth {
-		sth
-		{ prng SCREEN_WIDTH mod2 } sth-rk -> flowers[].x
-		sth-r inc
+	0* -> (idx) while dup FLOWERS_COUNT lth {
+		(idx) sth
+
+		// Randomize X so that flowers do not overlap with the campfire
+		0* -> (x) sth
+		loop @exit {
+			pop-r
+			prng { SCREEN_WIDTH FLOWER_WIDTH sub } mod2 -> (x) sth
+
+			sth-rk (x) CAMPFIRE_X     GRID_SIZE sub FLOWER_WIDTH sub lth
+			sth-rk (x) CAMPFIRE_RIGHT GRID_SIZE add                  gth or
+			swap-r
+			sth-rk (idx) FLOWERS_GAP_Y mul sth
+			sth-rk CAMPFIRE_Y FLOWER_HEIGHT sub GRID_SIZE sub lth or
+			sth-r  CAMPFIRE_Y FLOWER_HEIGHT add GRID_SIZE add gth or
+			swap-r
+			if { jump @exit }
+		}
+
+		sth-r (x) sth-rk (idx) -> flowers[].x
+		sth-r (idx) inc
 	} pop
 }
 
