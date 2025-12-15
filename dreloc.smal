@@ -64,6 +64,9 @@ const short FLOWERS_COUNT { 94* }
 const short FLOWERS_GAP_Y { 5* }
 const short FLOWER_HEIGHT { 38* }
 
+const byte  FLAKE_BITS   { 0b00001111 }
+const short FLAKES_COUNT { 60* }
+
 // ==============================
 // Variables
 // ==============================
@@ -87,6 +90,14 @@ struct Flower {
 	short x
 }
 
+// Flake
+struct Flake {
+	// X and Y are fixed point numbers with precision of 1
+	short x
+	short y
+	short speed
+}
+
 // Number of frames elapsed from the start
 var short elapsed
 
@@ -94,6 +105,7 @@ var Cursor cursor
 var Dreloc dreloc
 
 rom var [94]Flower flowers
+rom var [60]Flake flakes
 
 // ==============================
 // Vectors
@@ -113,6 +125,7 @@ fun on-reset ( -> ) {
 	&on-mouse  Mouse.vector output
 
 	flowers-populate
+	flakes-populate
 }
 
 fun on-screen ( -> ) {
@@ -128,10 +141,9 @@ fun on-screen ( -> ) {
 	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } FLOWERS_GAP_Y div -> (idx)
 
 	(idx) dup flowers-draw-below
-
 	dreloc-draw
-
 	(idx) flowers-draw-above
+	flakes-draw
 
 	elapsed inc -> elapsed
 }
@@ -328,6 +340,51 @@ fun flower-draw-row ( short:x short:sine-offset short:divide -- ) {
 }
 
 // ==============================
+// Snow flakes
+// ==============================
+
+fun flakes-populate ( -- ) {
+	0* while dup FLAKES_COUNT lth {
+		sth
+		{ prng SCREEN_WIDTH mod }  10* mul sth-rk -> flakes[].x
+		{ prng SCREEN_HEIGHT mod } 10* mul sth-rk -> flakes[].y
+		{ prng 10* mod }           10* add sth-rk -> flakes[].speed
+		sth-r inc
+	} pop
+}
+
+fun flakes-draw ( -- ) {
+	0 Screen.auto output
+	&sprite-flake Screen.addr output
+
+	0* -> (idx) while dup FLAKES_COUNT lth {
+		(idx) sth
+
+		sth-rk flakes[].x -> (x)
+		sth-rk flakes[].y -> (y)
+
+		// Move flake vertically
+		dup (y) { sth-rk flakes[].speed } add sth-rk -> flakes[].y
+
+		// Move flake horizontally
+		{ (y) 100* div } sth-rk (idx) add sin to-short 5* div -> (delta)
+		(x delta) add sth-rk -> flakes[].x
+
+		// Draw the flake
+		// Devide X and Y by 10 because these are fixed point number with precision of 1
+		{ sth-rk flakes[].x 10* div } -> (x) dup Screen.x output
+		{ sth-rk flakes[].y 10* div } -> (y) dup Screen.y output
+		FLAKE_BITS Screen.sprite output
+
+		// Wrap flake from one screen edge to another
+		(y) SCREEN_HEIGHT gth if { 0* sth-rk -> flakes[].y }
+		(x) SCREEN_WIDTH  gth if { 0* sth-rk -> flakes[].x }
+
+		sth-r (idx) inc
+	} pop
+}
+
+// ==============================
 // Utils
 // ==============================
 
@@ -393,6 +450,17 @@ data sprite-cursor {
 	0b11111100
 	0b11000000
 	0b00000000
+	0b00000000
+}
+
+data sprite-flake {
+	0b01010100
+	0b11010110
+	0b00111000
+	0b11111110
+	0b00111000
+	0b11010110
+	0b01010100
 	0b00000000
 }
 
