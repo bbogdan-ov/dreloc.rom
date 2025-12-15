@@ -375,9 +375,11 @@ fun flowers-draw-above ( short:start-idx -- ) {
 }
 
 fun flower-draw ( short:idx -- ) {
-	(idx) dup 3* mod2 sth
+	(idx) dup 5* mod2 sth
 	/**/ sth-rk 1* eq if { &sprite-flower-2 }
 	elif sth-rk 2* eq    { &sprite-flower-3 }
+	elif sth-rk 3* eq    { &sprite-flower-4 }
+	elif sth-rk 4* eq    { &sprite-flower-5 }
 	else                 { &sprite-flower-1 }
 	pop-r
 
@@ -560,3 +562,5 @@ data sprite-campfire { include "assets/campfire.chr" }
 data sprite-flower-1 { include "assets/flower-1.chr" }
 data sprite-flower-2 { include "assets/flower-2.chr" }
 data sprite-flower-3 { include "assets/flower-3.chr" }
+data sprite-flower-4 { include "assets/flower-4.chr" }
+data sprite-flower-5 { include "assets/flower-5.chr" }
