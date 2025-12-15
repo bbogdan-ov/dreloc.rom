@@ -46,39 +46,10 @@ untyped enum byte DateTime {
 
 enum byte Dir { down left up right }
 
-const short SCREEN_WIDTH { 512* }
+const short SCREEN_WIDTH  { 512* }
 const short SCREEN_HEIGHT { 512* }
 
 const short GRID_SIZE { 16* }
-
-const short DRELOC_WIDTH      { 72* }
-const short DRELOC_HEIGHT     { 96* }
-const short DRELOC_WALK_SPEED { 2* }
-const byte  DRELOC_COLOR      { 5 }
-
-const byte DRELOC_REST_DELAY { 120 }
-
-const byte  DRELOC_WALK_FRAMES { 4 }
-const byte  DRELOC_REST_FRAMES { 3 }
-// Delay between animation frames in game frames
-const byte  DRELOC_FRAMES_DELAY { 8 }
-// Data offset between frames in bytes
-const short DRELOC_FRAME_STRIDE { 1728* }
-
-const byte  FLOWER_BITS   { 0b10000101 }
-const short FLOWERS_COUNT { 94* }
-const short FLOWERS_GAP_Y { 5* }
-const short FLOWER_HEIGHT { 38* }
-
-const byte  FLAKE_BITS   { 0b00001111 }
-const short FLAKES_COUNT { 60* }
-
-const short CAMPFIRE_WIDTH  { 72* }
-const short CAMPFIRE_HEIGHT { 72* }
-const short CAMPFIRE_X      { SCREEN_WIDTH 2*  div CAMPFIRE_WIDTH 2*  div sub }
-const short CAMPFIRE_Y      { SCREEN_HEIGHT 2* div CAMPFIRE_HEIGHT 2* div sub }
-const short CAMPFIRE_RIGHT  { CAMPFIRE_X CAMPFIRE_WIDTH add }
-const short CAMPFIRE_BOTTOM { CAMPFIRE_Y CAMPFIRE_HEIGHT add }
 
 // ==============================
 // Variables
@@ -89,48 +60,10 @@ struct Cursor {
 	short y
 }
 
-// Dreloc's state
-enum byte State {
-	idle
-	walk
-	rest
-	stand-up
-}
-
-struct Dreloc {
-	short x
-	short y
-	short target-x
-	short target-y
-
-	State state
-
-	byte  walk-frame
-	Dir   walk-dir
-	byte  rest-timer
-	byte  rest-frame
-}
-
-struct Flower {
-	short x
-}
-
-// Flake
-struct Flake {
-	// X and Y are fixed point numbers with precision of 1
-	short x
-	short y
-	short speed
-}
+var Cursor cursor
 
 // Number of frames elapsed from the start
 var short elapsed
-
-var Cursor cursor
-var Dreloc dreloc
-
-rom var [94]Flower flowers
-rom var [60]Flake flakes
 
 // ==============================
 // Vectors
@@ -196,6 +129,44 @@ fun on-mouse ( -> ) {
 // ==============================
 // Dreloc
 // ==============================
+
+const short DRELOC_WIDTH      { 72* }
+const short DRELOC_HEIGHT     { 96* }
+const short DRELOC_WALK_SPEED { 2* }
+const byte  DRELOC_COLOR      { 5 }
+
+const byte DRELOC_REST_DELAY { 120 }
+
+const byte  DRELOC_WALK_FRAMES { 4 }
+const byte  DRELOC_REST_FRAMES { 3 }
+// Delay between animation frames in game frames
+const byte  DRELOC_FRAMES_DELAY { 8 }
+// Data offset between frames in bytes
+const short DRELOC_FRAME_STRIDE { 1728* }
+
+// Dreloc's state
+enum byte State {
+	idle
+	walk
+	rest
+	stand-up
+}
+
+struct Dreloc {
+	short x
+	short y
+	short target-x
+	short target-y
+
+	State state
+
+	byte  walk-frame
+	Dir   walk-dir
+	byte  rest-timer
+	byte  rest-frame
+}
+
+var Dreloc dreloc
 
 fun dreloc-update ( -- ) {
 	dreloc.state State.walk eq if {
@@ -342,6 +313,13 @@ fun dreloc-set-state ( State -- ) {
 // Campfire
 // ==============================
 
+const short CAMPFIRE_WIDTH  { 72* }
+const short CAMPFIRE_HEIGHT { 72* }
+const short CAMPFIRE_X      { SCREEN_WIDTH 2*  div CAMPFIRE_WIDTH 2*  div sub }
+const short CAMPFIRE_Y      { SCREEN_HEIGHT 2* div CAMPFIRE_HEIGHT 2* div sub }
+const short CAMPFIRE_RIGHT  { CAMPFIRE_X CAMPFIRE_WIDTH add }
+const short CAMPFIRE_BOTTOM { CAMPFIRE_Y CAMPFIRE_HEIGHT add }
+
 fun campfire-draw ( -- ) {
 	CAMPFIRE_X Screen.x output
 	CAMPFIRE_Y Screen.y output
@@ -360,6 +338,17 @@ fun campfire-draw ( -- ) {
 // ==============================
 // Flowers
 // ==============================
+
+const byte  FLOWER_BITS   { 0b10000101 }
+const short FLOWERS_COUNT { 94* }
+const short FLOWERS_GAP_Y { 5* }
+const short FLOWER_HEIGHT { 38* }
+
+struct Flower {
+	short x
+}
+
+rom var [94]Flower flowers
 
 fun flowers-populate ( -- ) {
 	0* while dup FLOWERS_COUNT lth {
@@ -429,6 +418,19 @@ fun flower-draw-row ( short:x short:sine-offset short:divide -- ) {
 // ==============================
 // Snow flakes
 // ==============================
+
+const byte  FLAKE_BITS   { 0b00001111 }
+const short FLAKES_COUNT { 60* }
+
+// Flake
+struct Flake {
+	// X and Y are fixed point numbers with precision of 1
+	short x
+	short y
+	short speed
+}
+
+rom var [60]Flake flakes
 
 fun flakes-populate ( -- ) {
 	0* while dup FLAKES_COUNT lth {
@@ -526,6 +528,7 @@ data sine-lookup { include "assets/sine.bin" }
 fun sin ( short -- byte ) {
 	SINE_LOOKUP_N mod2 sine-lookup[]
 }
+
 // ==============================
 // Assets
 // ==============================
