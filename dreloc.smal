@@ -67,13 +67,20 @@ const short FLOWER_HEIGHT { 38* }
 const byte  FLAKE_BITS   { 0b00001111 }
 const short FLAKES_COUNT { 60* }
 
+const short CAMPFIRE_WIDTH  { 72* }
+const short CAMPFIRE_HEIGHT { 72* }
+const short CAMPFIRE_X      { SCREEN_WIDTH 2*  div CAMPFIRE_WIDTH 2*  div sub }
+const short CAMPFIRE_Y      { SCREEN_HEIGHT 2* div CAMPFIRE_HEIGHT 2* div sub }
+const short CAMPFIRE_RIGHT  { CAMPFIRE_X CAMPFIRE_WIDTH add }
+const short CAMPFIRE_BOTTOM { CAMPFIRE_Y CAMPFIRE_HEIGHT add }
+
 // ==============================
 // Variables
 // ==============================
 
 struct Cursor {
-	short prev-x
-	short prev-y
+	short x
+	short y
 }
 
 struct Dreloc {
@@ -141,6 +148,7 @@ fun on-screen ( -> ) {
 	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } FLOWERS_GAP_Y div -> (idx)
 
 	(idx) dup flowers-draw-below
+	campfire-draw
 	dreloc-draw
 	(idx) flowers-draw-above
 	flakes-draw
@@ -153,34 +161,39 @@ fun on-mouse ( -> ) {
 	0 Screen.auto output
 
 	// Clear previous cursor
-	cursor.prev-x Screen.x output
-	cursor.prev-y Screen.y output
+	cursor.x Screen.x output
+	cursor.y Screen.y output
 	0b01000000 Screen.sprite output
 
 	// Draw new cursor
-	Mouse.x input2 { dup -> cursor.prev-x } Screen.x output
-	Mouse.y input2 { dup -> cursor.prev-y } Screen.y output
+	Mouse.x input2 { dup -> cursor.x } Screen.x output
+	Mouse.y input2 { dup -> cursor.y } Screen.y output
 	0b01000001 Screen.sprite output
 
-	Mouse.state input if {
-		{ Mouse.x input2 } { Mouse.y input2 } dreloc-set-target-pos
-	}
+	Mouse.state input if { dreloc-move-to-cursor }
 }
 
 // ==============================
 // Dreloc
 // ==============================
 
-fun dreloc-set-target-pos ( short:x short:y -- ) {
-	{
-		{ (y) snap } DRELOC_HEIGHT SCREEN_HEIGHT clamp
-		DRELOC_HEIGHT sub
-	} -> dreloc.target-y
+fun dreloc-move-to-cursor ( -- ) {
+	// Check whether the cursor is inside the campfire
+	CAMPFIRE_X     { DRELOC_WIDTH 2* div } sub cursor.x lth
+	CAMPFIRE_RIGHT { DRELOC_WIDTH 2* div } add cursor.x gth and
+	CAMPFIRE_Y      cursor.y lth and
+	CAMPFIRE_BOTTOM cursor.y gth and
+	if { return }
 
 	{
-		{ (x) snap } { DRELOC_WIDTH 2* div } { SCREEN_WIDTH DRELOC_WIDTH 2* div sub } clamp
+		{ cursor.x snap } { DRELOC_WIDTH 2* div } { SCREEN_WIDTH DRELOC_WIDTH 2* div sub } clamp
 		{ DRELOC_WIDTH 2* div } sub
 	} -> dreloc.target-x
+
+	{
+		{ cursor.y snap } DRELOC_HEIGHT SCREEN_HEIGHT clamp
+		DRELOC_HEIGHT sub
+	} -> dreloc.target-y
 }
 
 fun dreloc-move ( Dir:dir -- ) {
@@ -206,16 +219,14 @@ fun dreloc-update ( -- ) {
 	0 -> dreloc.is-walking
 
 	// Move to target
-	dreloc.x dreloc.target-x eq if {
-		// Move vertically
-		dreloc.y dreloc.target-y neq if {
-			/**/ dreloc.y dreloc.target-y lth if { Dir.down dreloc-move }
-			elif dreloc.y dreloc.target-y gth    { Dir.up dreloc-move }
-		}
-	} else {
+	dreloc.x dreloc.target-x neq if {
 		// Move horizontally
-		/**/ dreloc.x dreloc.target-x lth if { Dir.right dreloc-move }
-		elif dreloc.x dreloc.target-x gth    { Dir.left dreloc-move }
+		dreloc.x dreloc.target-x lth
+		if { Dir.right } else { Dir.left } dreloc-move
+	} elif dreloc.y dreloc.target-y neq {
+		// Move vertically
+		dreloc.y dreloc.target-y lth
+		if { Dir.down } else { Dir.up } dreloc-move
 	}
 
 	dreloc.is-walking if {
@@ -262,6 +273,25 @@ fun dreloc-draw ( -- ) {
 		output-k
 		output-k
 		output-k
+		output-k
+		output-k
+		output-k
+		output-k
+		output-k
+		output
+}
+
+// ==============================
+// Campfire
+// ==============================
+
+fun campfire-draw ( -- ) {
+	CAMPFIRE_X Screen.x output
+	CAMPFIRE_Y Screen.y output
+
+	0b10000110       Screen.auto output
+	&sprite-campfire Screen.addr output
+	0b10000000 5 or  Screen.sprite
 		output-k
 		output-k
 		output-k
@@ -465,6 +495,7 @@ data sprite-flake {
 }
 
 data sprite-dreloc   { include "assets/dreloc.chr" }
+data sprite-campfire { include "assets/campfire.chr" }
 data sprite-flower-1 { include "assets/flower-1.chr" }
 data sprite-flower-2 { include "assets/flower-2.chr" }
 data sprite-flower-3 { include "assets/flower-3.chr" }
