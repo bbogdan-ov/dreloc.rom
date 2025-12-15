@@ -15,7 +15,17 @@ ffmpeg -loglevel repeat+error -y \
 	-i ./tmp/0009.png \
 	-i ./tmp/0010.png \
 	-i ./tmp/0011.png \
-	-filter_complex 'vstack=12' \
+	-i ./tmp/0012.png \
+	-i ./tmp/0013.png \
+	-i ./tmp/0014.png \
+	-i ./tmp/0015.png \
+	-i ./tmp/0016.png \
+	-i ./tmp/0017.png \
+	-i ./tmp/0018.png \
+	-i ./tmp/0019.png \
+	-i ./tmp/0020.png \
+	-i ./tmp/0021.png \
+	-i ./tmp/0022.png \
+	-i ./tmp/0023.png \
+	-filter_complex 'vstack=24' \
 	./tmp/dreloc.png
-
-rm ./tmp/00*.png

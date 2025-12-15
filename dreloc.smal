@@ -51,13 +51,19 @@ const short SCREEN_HEIGHT { 512* }
 
 const short GRID_SIZE { 16* }
 
-const short DRELOC_WIDTH             { 72* }
-const short DRELOC_HEIGHT            { 96* }
-const short DRELOC_WALK_SPEED        { 2* }
-const byte  DRELOC_WALK_FRAMES_DELAY { 8 } // delay between anim frames in game frames
-const byte  DRELOC_COLOR             { 5 }
-const byte  DRELOC_WALK_FRAMES       { 4 }
-const short DRELOC_FRAME_STRIDE      { 1728* } // data offset between frames in bytes
+const short DRELOC_WIDTH      { 72* }
+const short DRELOC_HEIGHT     { 96* }
+const short DRELOC_WALK_SPEED { 2* }
+const byte  DRELOC_COLOR      { 5 }
+
+const byte DRELOC_REST_DELAY { 120 }
+
+const byte  DRELOC_WALK_FRAMES { 4 }
+const byte  DRELOC_REST_FRAMES { 3 }
+// Delay between animation frames in game frames
+const byte  DRELOC_FRAMES_DELAY { 8 }
+// Data offset between frames in bytes
+const short DRELOC_FRAME_STRIDE { 1728* }
 
 const byte  FLOWER_BITS   { 0b10000101 }
 const short FLOWERS_COUNT { 94* }
@@ -83,14 +89,26 @@ struct Cursor {
 	short y
 }
 
+// Dreloc's state
+enum byte State {
+	idle
+	walk
+	rest
+	stand-up
+}
+
 struct Dreloc {
 	short x
 	short y
 	short target-x
 	short target-y
+
+	State state
+
 	byte  walk-frame
-	byte  is-walking
 	Dir   walk-dir
+	byte  rest-timer
+	byte  rest-frame
 }
 
 struct Flower {
@@ -124,6 +142,8 @@ fun on-reset ( -> ) {
 	0xf0af* System.b output
 
 	prng-init
+
+	DRELOC_REST_DELAY -> dreloc.rest-timer
 
 	SCREEN_WIDTH  Screen.width output
 	SCREEN_HEIGHT Screen.height output
@@ -177,48 +197,23 @@ fun on-mouse ( -> ) {
 // Dreloc
 // ==============================
 
-fun dreloc-move-to-cursor ( -- ) {
-	// Check whether the cursor is inside the campfire
-	CAMPFIRE_X     { DRELOC_WIDTH 2* div } sub cursor.x lth
-	CAMPFIRE_RIGHT { DRELOC_WIDTH 2* div } add cursor.x gth and
-	CAMPFIRE_Y      cursor.y lth and
-	CAMPFIRE_BOTTOM cursor.y gth and
-	if { return }
-
-	{
-		{ cursor.x snap } { DRELOC_WIDTH 2* div } { SCREEN_WIDTH DRELOC_WIDTH 2* div sub } clamp
-		{ DRELOC_WIDTH 2* div } sub
-	} -> dreloc.target-x
-
-	{
-		{ cursor.y snap } DRELOC_HEIGHT SCREEN_HEIGHT clamp
-		DRELOC_HEIGHT sub
-	} -> dreloc.target-y
-}
-
-fun dreloc-move ( Dir:dir -- ) {
-	dup (dir) Dir.right eq if {
-		// Move right
-		dreloc.x DRELOC_WALK_SPEED add -> dreloc.x
-	} elif dup (dir) Dir.left eq {
-		// Move left
-		dreloc.x DRELOC_WALK_SPEED sub -> dreloc.x
-	} elif dup (dir) Dir.down eq {
-		// Move down
-		dreloc.y DRELOC_WALK_SPEED add -> dreloc.y
-	} elif dup (dir) Dir.up eq {
-		// Move up
-		dreloc.y DRELOC_WALK_SPEED sub -> dreloc.y
-	}
-
-	(dir) -> dreloc.walk-dir
-	1     -> dreloc.is-walking
-}
-
 fun dreloc-update ( -- ) {
-	0 -> dreloc.is-walking
+	dreloc.state State.walk eq if {
+		dreloc-update-walk-anim
+		dreloc-update-movement
+	}
+	elif dreloc.state State.idle eq {
+		// Stop walking animation but set it to a "half" of a frame, so when
+		// animation plays again it starts almost immediately
+		DRELOC_FRAMES_DELAY 2 div -> dreloc.walk-frame
 
-	// Move to target
+		dreloc-update-rest-timer
+	}
+	elif dreloc.state State.rest     eq { dreloc-update-sit-down-anim }
+	elif dreloc.state State.stand-up eq { dreloc-update-stand-up-anim }
+}
+
+fun dreloc-update-movement ( -- ) {
 	dreloc.x dreloc.target-x neq if {
 		// Move horizontally
 		dreloc.x dreloc.target-x lth
@@ -227,40 +222,54 @@ fun dreloc-update ( -- ) {
 		// Move vertically
 		dreloc.y dreloc.target-y lth
 		if { Dir.down } else { Dir.up } dreloc-move
-	}
-
-	dreloc.is-walking if {
-		dreloc-update-walk-anim
 	} else {
-		DRELOC_WALK_FRAMES_DELAY 2 div -> dreloc.walk-frame
+		State.idle dreloc-set-state
 	}
 }
 
 fun dreloc-update-walk-anim ( -- ) {
-	dreloc.walk-frame inc -> (frame)
-	(frame) dup { DRELOC_WALK_FRAMES DRELOC_WALK_FRAMES_DELAY mul }
-	eq if { (frame) pop 0 -> (frame) }
+	{ dreloc.walk-frame inc } { DRELOC_WALK_FRAMES DRELOC_FRAMES_DELAY mul } mod
+	-> dreloc.walk-frame
+}
+fun dreloc-update-sit-down-anim ( -- ) {
+	dreloc.rest-frame { DRELOC_REST_FRAMES DRELOC_FRAMES_DELAY mul } lth
+	if { dreloc.rest-frame inc -> dreloc.rest-frame }
+}
+fun dreloc-update-stand-up-anim ( -- ) {
+	dreloc.rest-frame 0 gth
+	if   { dreloc.rest-frame 1 sub -> dreloc.rest-frame }
+	else { State.walk dreloc-set-state }
+}
 
-	(frame) -> dreloc.walk-frame
+fun dreloc-update-rest-timer ( -- ) {
+	dreloc.rest-timer 0 gth
+	if   { dreloc.rest-timer 1 sub -> dreloc.rest-timer }
+	else { State.rest dreloc-set-state }
 }
 
 fun dreloc-draw ( -- ) {
+	// Choose frame based on in which direction Dreloc is looking
 	/**/ dreloc.walk-dir Dir.down  eq if { 0* }
 	elif dreloc.walk-dir Dir.left  eq    { DRELOC_FRAME_STRIDE 3* mul }
 	elif dreloc.walk-dir Dir.up    eq    { DRELOC_FRAME_STRIDE 6* mul }
 	elif dreloc.walk-dir Dir.right eq    { DRELOC_FRAME_STRIDE 9* mul }
 	else { 0* } -> (frame)
 
-	dreloc.is-walking if {
-		{ dreloc.walk-frame DRELOC_WALK_FRAMES_DELAY } div sth
-		/**/ sth-kr 0 eq if { (frame) }
-		elif sth-kr 1 eq    { (frame) DRELOC_FRAME_STRIDE add -> (frame) }
+	dreloc.state State.walk eq if {
+		{ dreloc.walk-frame DRELOC_FRAMES_DELAY } div sth
+		/**/ sth-kr 1 eq if { (frame) DRELOC_FRAME_STRIDE add -> (frame) }
 		elif sth-kr 2 eq    { (frame) }
 		elif sth-kr 3 eq    { (frame) DRELOC_FRAME_STRIDE 2* mul add -> (frame) }
 		pop-r
 	}
 
-	(frame) &sprite-dreloc add Screen.addr output
+	{ dreloc.rest-frame DRELOC_FRAMES_DELAY } div sth
+	/**/ sth-kr 1 eq if { (frame) DRELOC_FRAME_STRIDE 12* mul add -> (frame) }
+	elif sth-kr 2 eq    { (frame) DRELOC_FRAME_STRIDE 13* mul add -> (frame) }
+	elif sth-kr 3 eq    { (frame) DRELOC_FRAME_STRIDE 14* mul add -> (frame) }
+	pop-r
+
+	{ (frame) &sprite-dreloc add } Screen.addr output
 
 	dreloc.x Screen.x output
 	dreloc.y Screen.y output
@@ -279,6 +288,54 @@ fun dreloc-draw ( -- ) {
 		output-k
 		output-k
 		output
+}
+
+fun dreloc-move-to-cursor ( -- ) {
+	// Check whether the cursor is inside the campfire
+	CAMPFIRE_X     { DRELOC_WIDTH 2* div } sub cursor.x lth
+	CAMPFIRE_RIGHT { DRELOC_WIDTH 2* div } add cursor.x gth and
+	CAMPFIRE_Y      cursor.y lth and
+	CAMPFIRE_BOTTOM cursor.y gth and
+	if { return }
+
+	{
+		{ cursor.x snap } { DRELOC_WIDTH 2* div } { SCREEN_WIDTH DRELOC_WIDTH 2* div sub } clamp
+		{ DRELOC_WIDTH 2* div } sub
+	} -> dreloc.target-x
+
+	{
+		{ cursor.y snap } DRELOC_HEIGHT SCREEN_HEIGHT clamp
+		DRELOC_HEIGHT sub
+	} -> dreloc.target-y
+
+	dreloc.state State.rest eq if {
+		State.stand-up dreloc-set-state
+	} elif dreloc.state State.idle eq {
+		State.walk dreloc-set-state
+	}
+}
+
+fun dreloc-move ( Dir:dir -- ) {
+	dup (dir) Dir.right eq if {
+		// Move right
+		dreloc.x DRELOC_WALK_SPEED add -> dreloc.x
+	} elif dup (dir) Dir.left eq {
+		// Move left
+		dreloc.x DRELOC_WALK_SPEED sub -> dreloc.x
+	} elif dup (dir) Dir.down eq {
+		// Move down
+		dreloc.y DRELOC_WALK_SPEED add -> dreloc.y
+	} elif dup (dir) Dir.up eq {
+		// Move up
+		dreloc.y DRELOC_WALK_SPEED sub -> dreloc.y
+	}
+
+	(dir) -> dreloc.walk-dir
+}
+
+fun dreloc-set-state ( State -- ) {
+	-> dreloc.state
+	DRELOC_REST_DELAY -> dreloc.rest-timer
 }
 
 // ==============================
@@ -307,7 +364,7 @@ fun campfire-draw ( -- ) {
 fun flowers-populate ( -- ) {
 	0* while dup FLOWERS_COUNT lth {
 		sth
-		{ prng SCREEN_WIDTH mod } sth-rk -> flowers[].x
+		{ prng SCREEN_WIDTH mod2 } sth-rk -> flowers[].x
 		sth-r inc
 	} pop
 }
@@ -329,7 +386,7 @@ fun flowers-draw-above ( short:start-idx -- ) {
 }
 
 fun flower-draw ( short:idx -- ) {
-	(idx) dup 3* mod sth
+	(idx) dup 3* mod2 sth
 	/**/ sth-rk 1* eq if { &sprite-flower-2 }
 	elif sth-rk 2* eq    { &sprite-flower-3 }
 	else                 { &sprite-flower-1 }
@@ -376,9 +433,9 @@ fun flower-draw-row ( short:x short:sine-offset short:divide -- ) {
 fun flakes-populate ( -- ) {
 	0* while dup FLAKES_COUNT lth {
 		sth
-		{ prng SCREEN_WIDTH mod }  10* mul sth-rk -> flakes[].x
-		{ prng SCREEN_HEIGHT mod } 10* mul sth-rk -> flakes[].y
-		{ prng 10* mod }           10* add sth-rk -> flakes[].speed
+		{ prng SCREEN_WIDTH mod2 }  10* mul sth-rk -> flakes[].x
+		{ prng SCREEN_HEIGHT mod2 } 10* mul sth-rk -> flakes[].y
+		{ prng 10* mod2 }           10* add sth-rk -> flakes[].speed
 		sth-r inc
 	} pop
 }
@@ -432,7 +489,8 @@ fun snap ( short -- short ) {
 }
 
 fun not ( byte -- byte ) { 0 eq }
-fun mod ( short:num short:divisor -- short:remainder ) { div-k mul sub }
+fun mod ( byte:num byte:divisor -- byte:remainder ) { div-k mul sub }
+fun mod2 ( short:num short:divisor -- short:remainder ) { div-k mul sub }
 
 fun to-short ( byte -- short ) { 0 swap as (short) }
 
@@ -466,7 +524,7 @@ const short SINE_LOOKUP_N { 30* }
 data sine-lookup { include "assets/sine.bin" }
 
 fun sin ( short -- byte ) {
-	SINE_LOOKUP_N mod sine-lookup[]
+	SINE_LOOKUP_N mod2 sine-lookup[]
 }
 // ==============================
 // Assets
