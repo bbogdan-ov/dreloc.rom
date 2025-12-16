@@ -105,22 +105,20 @@ fun on-screen ( -> ) {
 	(idx) flowers-draw-above
 	flakes-draw
 
+	// Draw mouse cursor
+	&sprite-cursor Screen.addr output
+	0b00010110     Screen.auto output
+	cursor.x       Screen.x output
+	cursor.y       Screen.y output
+	0b10000101     Screen.sprite output-k output
+
 	elapsed inc -> elapsed
 }
 
 fun on-mouse ( -> ) {
-	&sprite-cursor Screen.addr output
-	0 Screen.auto output
-
-	// Clear previous cursor
-	cursor.x Screen.x output
-	cursor.y Screen.y output
-	0b01000000 Screen.sprite output
-
 	// Draw new cursor
-	Mouse.x input2 { dup -> cursor.x } Screen.x output
-	Mouse.y input2 { dup -> cursor.y } Screen.y output
-	0b01000001 Screen.sprite output
+	Mouse.x input2 -> cursor.x
+	Mouse.y input2 -> cursor.y
 
 	Mouse.state input if { dreloc-move-to-cursor }
 }
@@ -560,17 +558,6 @@ fun sin ( short -- byte ) {
 // Assets
 // ==============================
 
-data sprite-cursor {
-	0b11000000
-	0b11100000
-	0b11110000
-	0b11111000
-	0b11111100
-	0b11000000
-	0b00000000
-	0b00000000
-}
-
 data sprite-flake {
 	0b01010100
 	0b11010110
@@ -589,3 +576,4 @@ data sprite-flower-2 { include "assets/flower-2.chr" }
 data sprite-flower-3 { include "assets/flower-3.chr" }
 data sprite-flower-4 { include "assets/flower-4.chr" }
 data sprite-flower-5 { include "assets/flower-5.chr" }
+data sprite-cursor   { include "assets/cursor.chr" }
