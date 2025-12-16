@@ -277,11 +277,13 @@ fun dreloc-move-to-cursor ( -- ) {
 	{
 		{ cursor.x snap } { DRELOC_WIDTH 2* div } { SCREEN_WIDTH DRELOC_WIDTH 2* div sub } clamp
 		{ DRELOC_WIDTH 2* div } sub
+		{ GRID_SIZE 2* div } add
 	} -> dreloc.target-x
 
 	{
 		{ cursor.y snap } DRELOC_HEIGHT SCREEN_HEIGHT clamp
 		DRELOC_HEIGHT sub
+		GRID_SIZE add
 	} -> dreloc.target-y
 
 	dreloc.state State.rest eq if {
