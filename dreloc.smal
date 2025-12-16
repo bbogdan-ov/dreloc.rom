@@ -75,8 +75,7 @@ fun on-reset ( -> ) {
 	0xf0af* System.b output
 
 	prng-init
-
-	DRELOC_REST_DELAY -> dreloc.rest-timer
+	dreloc-init
 
 	SCREEN_WIDTH  Screen.width output
 	SCREEN_HEIGHT Screen.height output
@@ -167,6 +166,14 @@ struct Dreloc {
 }
 
 var Dreloc dreloc
+
+fun dreloc-init ( -- ) {
+	CAMPFIRE_X DRELOC_WIDTH sub -> dreloc.x
+	CAMPFIRE_Y DRELOC_HEIGHT 2* div sub -> dreloc.y
+	Dir.right -> dreloc.walk-dir
+	State.rest dreloc-set-state
+	DRELOC_REST_FRAMES DRELOC_FRAMES_DELAY mul -> dreloc.rest-frame
+}
 
 fun dreloc-update ( -- ) {
 	dreloc.state State.walk eq if {
