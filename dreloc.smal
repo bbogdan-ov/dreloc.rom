@@ -58,6 +58,7 @@ const short GRID_SIZE { 16* }
 struct Cursor {
 	short x
 	short y
+	byte  grab
 }
 
 var Cursor cursor
@@ -106,11 +107,11 @@ fun on-screen ( -> ) {
 	flakes-draw
 
 	// Draw mouse cursor
-	&sprite-cursor Screen.addr output
-	0b00010110     Screen.auto output
-	cursor.x       Screen.x output
-	cursor.y       Screen.y output
-	0b10000101     Screen.sprite output-k output
+	cursor.grab if { &sprite-cursor-grab } else { &sprite-cursor } Screen.addr output
+	0b00010110 Screen.auto output
+	cursor.x   Screen.x output
+	cursor.y   Screen.y output
+	0b10000101 Screen.sprite output-k output
 
 	elapsed inc -> elapsed
 }
@@ -120,7 +121,27 @@ fun on-mouse ( -> ) {
 	Mouse.x input2 -> cursor.x
 	Mouse.y input2 -> cursor.y
 
-	Mouse.state input if { dreloc-move-to-cursor }
+	// Check whether the cursor is hovering over a non-picked up flower
+	cursor.y FLOWERS_GAP_Y sub FLOWERS_GAP_Y div -> (flower-idx) sth
+	sth-rk (flower-idx) flowers[].picked not if {
+		sth-rk (flower-idx) flowers[].x sth
+		sth-rk cursor.x lth
+		sth-r  cursor.x FLOWER_WIDTH sub gth
+		and -> (picking)
+	} else {
+		0 -> (picking)
+	}
+
+	(picking) -> cursor.grab
+
+	Mouse.state input if {
+		cursor.grab -> dreloc.is-picking
+		cursor.grab if { sth-rk (flower-idx) -> dreloc.pick-idx }
+
+		dreloc-move-to-cursor
+	}
+
+	pop-r
 }
 
 // ==============================
@@ -136,6 +157,7 @@ const byte DRELOC_REST_DELAY { 120 }
 
 const byte  DRELOC_WALK_FRAMES { 4 }
 const byte  DRELOC_REST_FRAMES { 3 }
+const byte  DRELOC_PICK_FRAMES { 4 }
 // Delay between animation frames in game frames
 const byte  DRELOC_FRAMES_DELAY { 8 }
 // Data offset between frames in bytes
@@ -147,6 +169,7 @@ enum byte State {
 	walk
 	rest
 	stand-up
+	pick
 }
 
 struct Dreloc {
@@ -156,11 +179,14 @@ struct Dreloc {
 	short target-y
 
 	State state
+	byte  is-picking
+	short pick-idx
 
 	byte  walk-frame
 	Dir   walk-dir
 	byte  rest-timer
 	byte  rest-frame
+	byte  pick-frame
 }
 
 var Dreloc dreloc
@@ -187,6 +213,7 @@ fun dreloc-update ( -- ) {
 	}
 	elif dreloc.state State.rest     eq { dreloc-update-sit-down-anim }
 	elif dreloc.state State.stand-up eq { dreloc-update-stand-up-anim }
+	elif dreloc.state State.pick     eq { dreloc-update-pick-up-anim }
 }
 
 fun dreloc-update-movement ( -- ) {
@@ -199,7 +226,7 @@ fun dreloc-update-movement ( -- ) {
 		dreloc.y dreloc.target-y lth
 		if { Dir.down } else { Dir.up } dreloc-move
 	} else {
-		State.idle dreloc-set-state
+		dreloc.is-picking if { State.pick } else { State.idle } dreloc-set-state
 	}
 }
 
@@ -215,6 +242,17 @@ fun dreloc-update-stand-up-anim ( -- ) {
 	dreloc.rest-frame 0 gth
 	if   { dreloc.rest-frame 1 sub -> dreloc.rest-frame }
 	else { State.walk dreloc-set-state }
+}
+fun dreloc-update-pick-up-anim ( -- ) {
+	dreloc.pick-frame { DRELOC_PICK_FRAMES DRELOC_FRAMES_DELAY mul } lth
+	if {
+		dreloc.pick-frame
+		dup { 2 DRELOC_FRAMES_DELAY mul } eq if { 1 dreloc.pick-idx -> flowers[].picked }
+		1 add -> dreloc.pick-frame
+	} else {
+		0 -> dreloc.pick-frame
+		State.idle dreloc-set-state
+	}
 }
 
 fun dreloc-update-rest-timer ( -- ) {
@@ -245,6 +283,12 @@ fun dreloc-draw ( -- ) {
 	elif sth-kr 3 eq    { (frame) DRELOC_FRAME_STRIDE 14* mul add -> (frame) }
 	pop-r
 
+	{ dreloc.pick-frame DRELOC_FRAMES_DELAY } div sth
+	/**/ sth-kr 1 eq if { (frame) DRELOC_FRAME_STRIDE 12* mul add -> (frame) }
+	elif sth-kr 2 eq    { (frame) DRELOC_FRAME_STRIDE 13* mul add -> (frame) }
+	elif sth-kr 3 eq    { (frame) DRELOC_FRAME_STRIDE 12* mul add -> (frame) }
+	pop-r
+
 	{ (frame) &sprite-dreloc add } Screen.addr output
 
 	dreloc.x Screen.x output
@@ -268,8 +312,8 @@ fun dreloc-draw ( -- ) {
 
 fun dreloc-move-to-cursor ( -- ) {
 	// Check whether the cursor is inside the campfire
-	CAMPFIRE_X     { DRELOC_WIDTH 2* div } sub cursor.x lth
-	CAMPFIRE_RIGHT { DRELOC_WIDTH 2* div } add cursor.x gth and
+	CAMPFIRE_X      cursor.x lth
+	CAMPFIRE_RIGHT  cursor.x gth and
 	CAMPFIRE_Y      cursor.y lth and
 	CAMPFIRE_BOTTOM cursor.y gth and
 	if { return }
@@ -281,7 +325,12 @@ fun dreloc-move-to-cursor ( -- ) {
 	} -> dreloc.target-x
 
 	{
-		{ cursor.y snap } DRELOC_HEIGHT SCREEN_HEIGHT clamp
+		cursor.y -> (y)
+		
+		// Set target Y a bit lower when picking up a flower
+		dreloc.is-picking if { (y) FLOWER_HEIGHT 2* div add -> (y) }
+
+		{ (y) snap } DRELOC_HEIGHT SCREEN_HEIGHT clamp
 		DRELOC_HEIGHT sub
 		GRID_SIZE add
 	} -> dreloc.target-y
@@ -321,7 +370,7 @@ fun dreloc-set-state ( State -- ) {
 // ==============================
 
 const short CAMPFIRE_WIDTH  { 72* }
-const short CAMPFIRE_HEIGHT { 72* }
+const short CAMPFIRE_HEIGHT { 48* }
 const short CAMPFIRE_X      { SCREEN_WIDTH 2*  div CAMPFIRE_WIDTH 2*  div sub }
 const short CAMPFIRE_Y      { SCREEN_HEIGHT 2* div CAMPFIRE_HEIGHT 2* div sub }
 const short CAMPFIRE_RIGHT  { CAMPFIRE_X CAMPFIRE_WIDTH add }
@@ -354,6 +403,7 @@ const short FLOWERS_GAP_Y { 5* }
 
 struct Flower {
 	short x
+	byte  picked
 }
 
 rom var [94]Flower flowers
@@ -400,6 +450,8 @@ fun flowers-draw-above ( short:start-idx -- ) {
 }
 
 fun flower-draw ( short:idx -- ) {
+	dup (idx) flowers[].picked if { pop return }
+
 	(idx) dup 5* mod2 sth
 	/**/ sth-rk 1* eq if { &sprite-flower-2 }
 	elif sth-rk 2* eq    { &sprite-flower-3 }
@@ -571,11 +623,12 @@ data sprite-flake {
 	0b00000000
 }
 
-data sprite-dreloc   { include "assets/dreloc.chr" }
-data sprite-campfire { include "assets/campfire.chr" }
-data sprite-flower-1 { include "assets/flower-1.chr" }
-data sprite-flower-2 { include "assets/flower-2.chr" }
-data sprite-flower-3 { include "assets/flower-3.chr" }
-data sprite-flower-4 { include "assets/flower-4.chr" }
-data sprite-flower-5 { include "assets/flower-5.chr" }
-data sprite-cursor   { include "assets/cursor.chr" }
+data sprite-dreloc      { include "assets/dreloc.chr" }
+data sprite-campfire    { include "assets/campfire.chr" }
+data sprite-flower-1    { include "assets/flower-1.chr" }
+data sprite-flower-2    { include "assets/flower-2.chr" }
+data sprite-flower-3    { include "assets/flower-3.chr" }
+data sprite-flower-4    { include "assets/flower-4.chr" }
+data sprite-flower-5    { include "assets/flower-5.chr" }
+data sprite-cursor      { include "assets/cursor.chr" }
+data sprite-cursor-grab { include "assets/cursor-grab.chr" }
