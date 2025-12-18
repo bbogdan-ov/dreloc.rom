@@ -141,7 +141,7 @@ fun draw-top-layer ( -- ) {
 	flakes-draw
 
 	// Draw mouse cursor
-	cursor.grab if { &sprite-cursor-grab } else { &sprite-cursor } Screen.addr output
+	&sprite-cursor cursor.grab if { 64* add } Screen.addr output
 	0b00010110 Screen.auto output
 	cursor.x   Screen.x output
 	cursor.y   Screen.y output
@@ -797,16 +797,15 @@ data sprite-flake {
 	0b00000000
 }
 
-data sprite-dreloc      { include "assets/dreloc.chr" }
-data sprite-campfire    { include "assets/campfire.chr" }
-data sprite-flower-1    { include "assets/flower-1.chr" }
-data sprite-flower-2    { include "assets/flower-2.chr" }
-data sprite-flower-3    { include "assets/flower-3.chr" }
-data sprite-flower-4    { include "assets/flower-4.chr" }
-data sprite-flower-5    { include "assets/flower-5.chr" }
-data sprite-cursor      { include "assets/cursor.chr" }
-data sprite-cursor-grab { include "assets/cursor-grab.chr" }
-data sprite-fire        { include "assets/fire.chr" }
+data sprite-dreloc   { include "assets/dreloc.chr" }
+data sprite-campfire { include "assets/campfire.chr" }
+data sprite-flower-1 { include "assets/flower-1.chr" }
+data sprite-flower-2 { include "assets/flower-2.chr" }
+data sprite-flower-3 { include "assets/flower-3.chr" }
+data sprite-flower-4 { include "assets/flower-4.chr" }
+data sprite-flower-5 { include "assets/flower-5.chr" }
+data sprite-cursor   { include "assets/cursor.chr" }
+data sprite-fire     { include "assets/fire.chr" }
 
 const short GRASS_WIDTH        { 16* }
 const short GRASS_HEIGHT       { 16* }
