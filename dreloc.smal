@@ -88,25 +88,39 @@ fun on-reset ( -> ) {
 	&on-screen Screen.vector output
 	&on-mouse  Mouse.vector output
 
+	draw-bottom-layer
+
 	flowers-populate
 	flakes-populate
 }
 
 fun on-screen ( -> ) {
-	// Clear the whole screen
-	// TODO: may be i should come up with a better way to redraw game objects
+	dreloc-update
+	campfire-update
+
+	draw-top-layer
+
+	elapsed inc -> elapsed
+}
+
+fun draw-bottom-layer ( -- ) {
 	0* Screen.x output
 	0* Screen.y output
 	0b10000000 Screen.pixel output
 
-	dreloc-update
-	campfire-update
+	campfire-draw
+}
+
+fun draw-top-layer ( -- ) {
+	// Clear the whole screen
+	0* Screen.x output
+	0* Screen.y output
+	0b11000000 Screen.pixel output
 
 	// Calculate index used for slicing the array of flowers
 	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } FLOWERS_GAP_Y div -> (idx)
 
 	(idx) dup flowers-draw-below
-	campfire-draw
 	campfire-fire-draw-below
 	dreloc-draw
 	campfire-fire-draw-above
@@ -118,9 +132,7 @@ fun on-screen ( -> ) {
 	0b00010110 Screen.auto output
 	cursor.x   Screen.x output
 	cursor.y   Screen.y output
-	0b10000101 Screen.sprite output-k output
-
-	elapsed inc -> elapsed
+	0b11000101 Screen.sprite output-k output
 }
 
 fun on-mouse ( -> ) {
@@ -303,7 +315,7 @@ fun dreloc-draw ( -- ) {
 	dreloc.y Screen.y output
 
 	0b10000110 Screen.auto output
-	0b10000000 DRELOC_COLOR or Screen.sprite
+	0b11000000 DRELOC_COLOR or Screen.sprite
 		output-k
 		output-k
 		output-k
@@ -508,7 +520,7 @@ fun campfire-fire-draw ( -- ) {
 	0b01000110 Screen.auto output
 	FIRE_X Screen.x output
 	FIRE_Y Screen.y output
-	0b10000101 Screen.sprite
+	0b11000101 Screen.sprite
 		output-k
 		output-k
 		output-k
@@ -525,7 +537,7 @@ fun campfire-fire-draw ( -- ) {
 
 const short FLOWER_WIDTH  { 16* }
 const short FLOWER_HEIGHT { 38* }
-const byte  FLOWER_BITS   { 0b10000101 }
+const byte  FLOWER_BITS   { 0b11000101 }
 const short FLOWERS_COUNT { 94* }
 const short FLOWERS_GAP_Y { 5* }
 
@@ -626,7 +638,7 @@ fun flower-draw-row ( short:x short:sine-offset short:divide -- ) {
 // Snow flakes
 // ==============================
 
-const byte  FLAKE_BITS   { 0b00001111 }
+const byte  FLAKE_BITS   { 0b01001111 }
 const short FLAKES_COUNT { 60* }
 
 // Flake
