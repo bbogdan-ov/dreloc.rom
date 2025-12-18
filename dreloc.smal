@@ -399,7 +399,7 @@ const byte  CAMPFIRE_TIMER_DELAY { 30 }
 const short FIRE_WIDTH        { 40* }
 const short FIRE_HEIGHT       { 64* }
 const short FIRE_X            { CAMPFIRE_X { CAMPFIRE_WIDTH 2* div } add { FIRE_WIDTH 2* div } sub }
-const short FIRE_Y            { CAMPFIRE_Y FIRE_WIDTH sub }
+const short FIRE_Y            { CAMPFIRE_Y FIRE_WIDTH sub 6* add }
 const short FIRE_FRAMES       { 4* }
 const short FIRE_FRAME_STRIDE { 640* }
 
