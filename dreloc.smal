@@ -206,6 +206,8 @@ enum byte State {
 struct Dreloc {
 	short x
 	short y
+	short prev-x
+	short prev-y
 	short target-x
 	short target-y
 
@@ -258,6 +260,17 @@ fun dreloc-update-movement ( -- ) {
 		if { Dir.down } else { Dir.up } dreloc-move
 	} else {
 		dreloc.is-picking if { State.pick } else { State.idle } dreloc-set-state
+	}
+	
+	// Check whether Dreloc overlaps with the campfire
+	CAMPFIRE_X      { dreloc.x DRELOC_WIDTH 2* div add }         lth
+	CAMPFIRE_RIGHT  { dreloc.x DRELOC_WIDTH 2* div add }         gth and
+	CAMPFIRE_Y      { dreloc.y DRELOC_HEIGHT add }               lth and
+	CAMPFIRE_BOTTOM { dreloc.y DRELOC_HEIGHT add GRID_SIZE sub } gth and
+	if {
+		dreloc.prev-x -> dreloc.x
+		dreloc.prev-y -> dreloc.y
+		State.idle dreloc-set-state
 	}
 }
 
@@ -349,13 +362,6 @@ fun dreloc-pick-up-flower ( -- ) {
 }
 
 fun dreloc-move-to-cursor ( -- ) {
-	// Check whether the cursor is inside the campfire
-	CAMPFIRE_X      cursor.x lth
-	CAMPFIRE_RIGHT  cursor.x gth and
-	CAMPFIRE_Y      cursor.y lth and
-	CAMPFIRE_BOTTOM cursor.y gth and
-	if { return }
-
 	{
 		{ cursor.x snap } { DRELOC_WIDTH 2* div } { SCREEN_WIDTH DRELOC_WIDTH 2* div sub } clamp
 		{ DRELOC_WIDTH 2* div } sub
@@ -381,6 +387,9 @@ fun dreloc-move-to-cursor ( -- ) {
 }
 
 fun dreloc-move ( Dir:dir -- ) {
+	dreloc.x -> dreloc.prev-x
+	dreloc.y -> dreloc.prev-y
+
 	dup (dir) Dir.right eq if {
 		// Move right
 		dreloc.x DRELOC_WALK_SPEED add -> dreloc.x
