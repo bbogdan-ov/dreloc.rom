@@ -104,15 +104,28 @@ fun on-screen ( -> ) {
 }
 
 fun draw-bottom-layer ( -- ) {
+	// Clear layer
 	0* Screen.x output
 	0* Screen.y output
 	0b10000000 Screen.pixel output
+
+	// Draw patches of grass
+	0b00010110 Screen.auto output
+	0* -> (idx) while dup 50* lth {
+		(idx) dup GRASS_FRAMES mod2 GRASS_FRAME_STRIDE mul &sprite-grass add -> (addr)
+		(addr) Screen.addr output
+
+		prng { SCREEN_WIDTH GRASS_WIDTH sub }   mod2 Screen.x output
+		prng { SCREEN_HEIGHT GRASS_HEIGHT sub } mod2 Screen.y output
+		0b00000010 Screen.sprite output-k output
+		(idx) inc
+	} pop
 
 	campfire-draw
 }
 
 fun draw-top-layer ( -- ) {
-	// Clear the whole screen
+	// Clear layer
 	0* Screen.x output
 	0* Screen.y output
 	0b11000000 Screen.pixel output
@@ -785,3 +798,9 @@ data sprite-flower-5    { include "assets/flower-5.chr" }
 data sprite-cursor      { include "assets/cursor.chr" }
 data sprite-cursor-grab { include "assets/cursor-grab.chr" }
 data sprite-fire        { include "assets/fire.chr" }
+
+const short GRASS_WIDTH        { 16* }
+const short GRASS_HEIGHT       { 16* }
+const short GRASS_FRAMES       { 5* }
+const short GRASS_FRAME_STRIDE { 32* }
+data sprite-grass       { include "assets/grass.icn" }
