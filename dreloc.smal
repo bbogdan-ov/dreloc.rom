@@ -107,9 +107,10 @@ fun on-screen ( -> ) {
 }
 
 fun on-mouse ( -> ) {
-	// Draw new cursor
 	Mouse.x input2 -> cursor.x
 	Mouse.y input2 -> cursor.y
+
+	scene Scene.field neq if { return }
 
 	// Check whether the cursor is hovering over a non-picked up flower
 	cursor.y FLOWERS_GAP_Y sub FLOWERS_GAP_Y div -> (flower-idx) sth
