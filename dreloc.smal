@@ -46,6 +46,8 @@ untyped enum byte DateTime {
 
 enum byte Dir { down left up right }
 
+enum byte Scene { intro field }
+
 const short SCREEN_WIDTH  { 512* }
 const short SCREEN_HEIGHT { 512* }
 
@@ -68,84 +70,40 @@ var Cursor cursor
 
 // Number of frames elapsed from the start
 var short elapsed
+// Current scene
+var Scene scene
 
 // ==============================
 // Vectors
 // ==============================
 
 fun on-reset ( -> ) {
-	0xf0af* System.r output
-	0xf0af* System.g output
-	0xf0af* System.b output
-
-	prng-init
-	dreloc-init
-	campfire-init
-
 	SCREEN_WIDTH  Screen.width output
 	SCREEN_HEIGHT Screen.height output
 
 	&on-screen Screen.vector output
 	&on-mouse  Mouse.vector output
 
-	draw-bottom-layer
+	prng-init
+	dreloc-init
+	campfire-init
+	intro-draw-background
 
 	flowers-populate
 	flakes-populate
 }
 
 fun on-screen ( -> ) {
-	dreloc-update
-	campfire-update
+	scene Scene.intro eq if {
+		intro-draw-foreground
+	} else {
+		dreloc-update
+		campfire-update
 
-	draw-top-layer
+		field-draw-foreground
+	}
 
 	elapsed inc -> elapsed
-}
-
-fun draw-bottom-layer ( -- ) {
-	// Clear layer
-	0* Screen.x output
-	0* Screen.y output
-	0b10000000 Screen.pixel output
-
-	// Draw patches of grass
-	0b00010110 Screen.auto output
-	0* -> (idx) while dup 50* lth {
-		(idx) dup GRASS_FRAMES mod2 GRASS_FRAME_STRIDE mul &sprite-grass add -> (addr)
-		(addr) Screen.addr output
-
-		prng { SCREEN_WIDTH GRASS_WIDTH sub }   mod2 Screen.x output
-		prng { SCREEN_HEIGHT GRASS_HEIGHT sub } mod2 Screen.y output
-		0b00000010 Screen.sprite output-k output
-		(idx) inc
-	} pop
-
-	campfire-draw
-}
-
-fun draw-top-layer ( -- ) {
-	// Clear layer
-	0* Screen.x output
-	0* Screen.y output
-	0b11000000 Screen.pixel output
-
-	// Calculate index used for slicing the array of flowers
-	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } FLOWERS_GAP_Y div -> (idx)
-
-	(idx) dup flowers-draw-below
-	campfire-fire-draw-below
-	dreloc-draw
-	campfire-fire-draw-above
-	(idx) flowers-draw-above
-	flakes-draw
-
-	// Draw mouse cursor
-	&sprite-cursor cursor.grab if { 64* add } Screen.addr output
-	0b00010110 Screen.auto output
-	cursor.x   Screen.x output
-	cursor.y   Screen.y output
-	0b11000101 Screen.sprite output-k output
 }
 
 fun on-mouse ( -> ) {
@@ -174,6 +132,218 @@ fun on-mouse ( -> ) {
 	}
 
 	pop-r
+}
+
+fun goto-field ( -- ) {
+	Scene.field -> scene
+	field-draw-background
+}
+
+// ==============================
+// Intro
+// ==============================
+
+const short INTRO_DRELOC_X    { { SCREEN_WIDTH 2* div } { DRELOC_WIDTH 2* div } sub }
+const short INTRO_DRELOC_Y    { { SCREEN_HEIGHT 2* div } { DRELOC_HEIGHT 2* div } sub }
+const *byte INTRO_DRELOC_ADDR { { 2* dreloc-rest-frame-offset } &sprite-dreloc add }
+
+const short INTRO_BLOOM_X { { SCREEN_WIDTH 2* div } { BLOOM_WIDTH 2* div } sub }
+const short INTRO_BLOOM_Y { { SCREEN_HEIGHT 2* div } { BLOOM_HEIGHT 2* div } sub 40* add }
+
+const short INTRO_NIMB_X { SCREEN_WIDTH 2* div }
+const short INTRO_NIMB_Y { { SCREEN_HEIGHT 2* div } 48* sub }
+const short INTRO_NIMB_TIME { 200* } // Game frame at which nimb animation should stop
+
+const short INTRO_FADE_IN_TIME        { 160* }
+const short INTRO_FADE_OUT_START_TIME { 300* }
+const short INTRO_FADE_OUT_TIME       { 160* }
+
+fun intro-draw-foreground ( -- ) {
+	// Clear layer
+	0* Screen.x output
+	0* Screen.y output
+	0b11000000 Screen.pixel output
+
+	intro-update-palette
+
+	// Draw nimb
+	0b01000110 Screen.auto output
+
+	// Animate nimb Y position using lerp and ease-out-quant
+	// There is a lot of magic numbers, i know
+	{
+		elapsed INTRO_NIMB_TIME min2 -> (alpha)
+		0* -> (from)
+		INTRO_NIMB_Y -> (to)
+
+		over (to from) sub -> (diff)
+		rot (from diff alpha)
+		{ // ease-out-quant
+			(alpha) {
+				INTRO_NIMB_TIME swap (_ alpha) sub
+				dup mul INTRO_NIMB_TIME div // pow(x, 2)
+				dup mul INTRO_NIMB_TIME div // pow(x, 2)
+			} -> (alpha)
+			(alpha) INTRO_NIMB_TIME swap (_ alpha) sub -> (alpha)
+		}
+		(diff alpha) mul INTRO_NIMB_TIME div -> (delta)
+		(from delta) add
+	} -> (nimb-y)
+
+	// Draw right part
+	&sprite-nimb Screen.addr output
+	INTRO_NIMB_X Screen.x output
+	(nimb-y) dup Screen.y output
+	0b01001111   Screen.sprite
+		output-k
+		output-k
+		output-k
+		output-k
+		output
+
+	// Draw left part
+	&sprite-nimb        Screen.addr output
+	INTRO_NIMB_X 8* sub Screen.x output
+	(nimb-y)            Screen.y output
+	0b01011111          Screen.sprite
+		output-k
+		output-k
+		output-k
+		output-k
+		output
+}
+
+fun intro-draw-background ( -- ) {
+	// Clear layer
+	0* Screen.x output
+	0* Screen.y output
+	0b10000000 Screen.pixel output
+
+	// Draw bloom
+	&sprite-bloom Screen.addr output
+	0b10010110    Screen.auto output
+	INTRO_BLOOM_X Screen.x output
+	INTRO_BLOOM_Y Screen.y output
+	0b00000011    Screen.sprite
+		output-k
+		output-k
+		output-k
+		output-k
+		output
+
+	// Draw dreloc
+	INTRO_DRELOC_ADDR Screen.addr output
+	INTRO_DRELOC_X    Screen.x output
+	INTRO_DRELOC_Y    Screen.y output
+	0b10000110        Screen.auto output
+	0b10000000 DRELOC_COLOR or Screen.sprite
+		output-k
+		output-k
+		output-k
+		output-k
+		output-k
+		output-k
+		output-k
+		output-k
+		output-k
+		output-k
+		output-k
+		output
+}
+
+fun intro-update-palette ( -- ) {
+	// Animate palette fade-in and fade-out
+	elapsed INTRO_FADE_OUT_START_TIME lth if {
+		elapsed LERP_COLOR_RESOLUTION mul INTRO_FADE_IN_TIME div -> (t)
+	} else {
+		elapsed INTRO_FADE_OUT_START_TIME sub -> (t)
+		(t) dup INTRO_FADE_OUT_TIME lth if {
+			(t) LERP_COLOR_RESOLUTION mul INTRO_FADE_OUT_TIME div -> (t)
+			LERP_COLOR_RESOLUTION swap (_ t) sub -> (t)
+		} else {
+			goto-field
+			(t) pop return
+		}
+	}
+
+	(t) sth {
+		sth-rk 0x0* 0xf* lerp-color
+		sth-rk 0x0* 0xa* lerp-color 0x40 shift or
+		sth-rk 0x0* 0x0* lerp-color 0x80 shift or
+		sth-rk 0x0* 0x5* lerp-color 0xc0 shift or -> (r)
+		(r) System.r output
+
+		sth-rk 0x0* 0xf* lerp-color
+		sth-rk 0x0* 0xa* lerp-color 0x40 shift or
+		sth-rk 0x0* 0x0* lerp-color 0x80 shift or
+		sth-rk 0x0* 0xa* lerp-color 0xc0 shift or -> (c)
+		(c) dup System.g output
+		(c)     System.b output
+	} pop-r
+}
+
+// ==============================
+// Field
+// ==============================
+
+const short FIELD_FADE_IN_START_TIME { INTRO_FADE_OUT_START_TIME INTRO_FADE_OUT_TIME add }
+const short FIELD_FADE_IN_TIME       { 160* }
+
+fun field-draw-foreground ( -- ) {
+	// Clear layer
+	0* Screen.x output
+	0* Screen.y output
+	0b11000000 Screen.pixel output
+
+	// Animate fade-in
+	elapsed { FIELD_FADE_IN_START_TIME FIELD_FADE_IN_TIME add } gth not if {
+		elapsed FIELD_FADE_IN_START_TIME sub LERP_COLOR_RESOLUTION mul FIELD_FADE_IN_TIME div sth
+		sth-rk 0x0* 0xf* lerp-color
+		sth-rk 0x0* 0xa* lerp-color 0x40 shift or
+		sth-rk 0x0* 0x0* lerp-color 0x80 shift or
+		sth-r  0x0* 0xf* lerp-color 0xc0 shift or -> (c)
+		(c) dup System.r output
+		(c) dup System.g output
+		(c)     System.b output
+	}
+
+	// Calculate index used for slicing the array of flowers
+	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } FLOWERS_GAP_Y div -> (idx)
+
+	(idx) dup flowers-draw-below
+	campfire-fire-draw-below
+	dreloc-draw
+	campfire-fire-draw-above
+	(idx) flowers-draw-above
+	flakes-draw
+
+	// Draw mouse cursor
+	&sprite-cursor cursor.grab if { 64* add } Screen.addr output
+	0b00010110 Screen.auto output
+	cursor.x   Screen.x output
+	cursor.y   Screen.y output
+	0b11000101 Screen.sprite output-k output
+}
+
+fun field-draw-background ( -- ) {
+	// Clear layer
+	0* Screen.x output
+	0* Screen.y output
+	0b10000000 Screen.pixel output
+
+	// Draw patches of grass
+	0b00010110 Screen.auto output
+	0* -> (idx) while dup 50* lth {
+		(idx) dup GRASS_FRAMES mod2 GRASS_FRAME_STRIDE mul &sprite-grass add -> (addr)
+		(addr) Screen.addr output
+
+		prng { SCREEN_WIDTH GRASS_WIDTH sub }   mod2 Screen.x output
+		prng { SCREEN_HEIGHT GRASS_HEIGHT sub } mod2 Screen.y output
+		0b00000010 Screen.sprite output-k output
+		(idx) inc
+	} pop
+
+	campfire-draw
 }
 
 // ==============================
@@ -307,6 +477,12 @@ fun dreloc-update-rest-timer ( -- ) {
 	else { State.rest dreloc-set-state }
 }
 
+const short DRELOC_DOWN_FRAME_OFFSET { 0* }
+
+fun dreloc-rest-frame-offset ( short:idx -- short ) {
+	12* add DRELOC_FRAME_STRIDE mul
+}
+
 fun dreloc-draw ( -- ) {
 	// Choose frame based on in which direction Dreloc is looking
 	/**/ dreloc.walk-dir Dir.down  eq if { 0* }
@@ -324,15 +500,17 @@ fun dreloc-draw ( -- ) {
 	}
 
 	{ dreloc.rest-frame FRAME_DELAY } div sth
-	/**/ sth-kr 1 eq if { (frame) DRELOC_FRAME_STRIDE 12* mul add -> (frame) }
-	elif sth-kr 2 eq    { (frame) DRELOC_FRAME_STRIDE 13* mul add -> (frame) }
-	elif sth-kr 3 eq    { (frame) DRELOC_FRAME_STRIDE 14* mul add -> (frame) }
+	/**/ sth-kr 0 eq if { (frame) }
+	elif sth-kr 1 eq    { (frame) 0* dreloc-rest-frame-offset add -> (frame) }
+	elif sth-kr 2 eq    { (frame) 1* dreloc-rest-frame-offset add -> (frame) }
+	elif sth-kr 3 eq    { (frame) 2* dreloc-rest-frame-offset add -> (frame) }
 	pop-r
 
 	{ dreloc.pick-frame FRAME_DELAY } div sth
-	/**/ sth-kr 1 eq if { (frame) DRELOC_FRAME_STRIDE 12* mul add -> (frame) }
-	elif sth-kr 2 eq    { (frame) DRELOC_FRAME_STRIDE 13* mul add -> (frame) }
-	elif sth-kr 3 eq    { (frame) DRELOC_FRAME_STRIDE 12* mul add -> (frame) }
+	/**/ sth-kr 0 eq if { (frame) }
+	elif sth-kr 1 eq    { (frame) 0* dreloc-rest-frame-offset add -> (frame) }
+	elif sth-kr 2 eq    { (frame) 1* dreloc-rest-frame-offset add -> (frame) }
+	elif sth-kr 3 eq    { (frame) 0* dreloc-rest-frame-offset add -> (frame) }
 	pop-r
 
 	{ (frame) &sprite-dreloc add } Screen.addr output
@@ -423,8 +601,7 @@ const short CAMPFIRE_Y           { SCREEN_HEIGHT 2* div CAMPFIRE_HEIGHT 2* div s
 const short CAMPFIRE_RIGHT       { CAMPFIRE_X CAMPFIRE_WIDTH add }
 const short CAMPFIRE_BOTTOM      { CAMPFIRE_Y CAMPFIRE_HEIGHT add }
 const byte  CAMPFIRE_MAX_FUEL    { 60 }
-const byte  CAMPFIRE_INIT_FUEL   { 45 }
-const short CAMPFIRE_DARKNESS_THRESHOLD { 40* }
+const short CAMPFIRE_CRITICAL_FUEL { 40* }
 // How much fuel gives a single flower
 const byte  CAMPFIRE_FLOWER_FUEL { 6 }
 const byte  CAMPFIRE_TIMER_DELAY { 30 }
@@ -446,16 +623,9 @@ struct Campfire {
 var Campfire campfire
 
 fun campfire-init ( -- ) {
-	CAMPFIRE_INIT_FUEL campfire-set-fuel
+	campfire-update-palette
+	CAMPFIRE_MAX_FUEL campfire-set-fuel
 	CAMPFIRE_TIMER_DELAY -> campfire.timer
-}
-
-fun lerp-color ( short:alpha short:from short:to -- short ) {
-	over (to from) sub -> (diff)
-	rot (from diff alpha)
-	(alpha) CAMPFIRE_DARKNESS_THRESHOLD min2 -> (alpha) // Clamp alpha so lerp doesn't overshoot
-	(diff alpha) mul CAMPFIRE_DARKNESS_THRESHOLD div -> (delta)
-	(from delta) add
 }
 
 fun campfire-update ( -- ) {
@@ -471,10 +641,13 @@ fun campfire-update ( -- ) {
 }
 
 fun campfire-update-palette ( -- ) {
-	campfire.fuel to-short 0x5* 0xf* lerp-color
-	campfire.fuel to-short 0x0* 0xa* lerp-color 0x40 shift or
-	campfire.fuel to-short 0x0* 0x0* lerp-color 0x80 shift or
-	campfire.fuel to-short 0x0* 0xf* lerp-color 0xc0 shift or -> (c)
+	// TODO: would be cool to refactor this to a macro if UXNSMAL had a macro system...
+	campfire.fuel to-short LERP_COLOR_RESOLUTION mul CAMPFIRE_CRITICAL_FUEL div sth
+
+	sth-rk 0x5* 0xf* lerp-color
+	sth-rk 0x0* 0xa* lerp-color 0x40 shift or
+	sth-rk 0x0* 0x0* lerp-color 0x80 shift or
+	sth-r  0x0* 0xf* lerp-color 0xc0 shift or -> (c)
 	(c) dup System.r output
 	(c) dup System.g output
 	(c)     System.b output
@@ -782,6 +955,16 @@ fun sin ( short -- byte ) {
 	SINE_LOOKUP_N mod2 sine-lookup[]
 }
 
+const short LERP_COLOR_RESOLUTION { 100* }
+
+fun lerp-color ( short:alpha short:from short:to -- short ) {
+	over (to from) sub -> (diff)
+	rot (from diff alpha)
+	(alpha) LERP_COLOR_RESOLUTION min2 -> (alpha) // Clamp alpha so lerp doesn't overshoot
+	(diff alpha) mul LERP_COLOR_RESOLUTION div -> (delta)
+	(from delta) add
+}
+
 // ==============================
 // Assets
 // ==============================
@@ -807,8 +990,16 @@ data sprite-flower-5 { include "assets/flower-5.chr" }
 data sprite-cursor   { include "assets/cursor.chr" }
 data sprite-fire     { include "assets/fire.chr" }
 
+const short NIMB_WIDTH  { 40* }
+const short NIMB_HEIGHT { 40* }
+data sprite-nimb { include "assets/nimb.icn" }
+
+const short BLOOM_WIDTH  { 80* }
+const short BLOOM_HEIGHT { 40* }
+data sprite-bloom { include "assets/bloom.icn" }
+
 const short GRASS_WIDTH        { 16* }
 const short GRASS_HEIGHT       { 16* }
 const short GRASS_FRAMES       { 5* }
 const short GRASS_FRAME_STRIDE { 32* }
-data sprite-grass       { include "assets/grass.icn" }
+data sprite-grass { include "assets/grass.icn" }
