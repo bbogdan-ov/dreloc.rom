@@ -117,22 +117,20 @@ fun on-reset ( -> ) {
 
 	flowers-populate
 	flakes-populate
-
-	goto-field
 }
 
 fun on-screen ( -> ) {
 	scene Scene.intro eq if {
 		intro-draw-foreground
 	} elif scene Scene.field eq {
-		field-draw-foreground
-
 		dreloc-update
 		campfire-update
-	} elif scene Scene.synergy eq {
-		synergy-draw-foreground
 
+		field-draw-foreground
+	} elif scene Scene.synergy eq {
 		dreloc-update
+
+		synergy-draw-foreground
 	}
 
 	elapsed inc -> elapsed
@@ -308,7 +306,6 @@ const short FIELD_FADE_IN_START_TIME { INTRO_FADE_OUT_START_TIME INTRO_FADE_OUT_
 const short FIELD_FADE_IN_TIME       { 100* }
 
 fun goto-field ( -- ) {
-	palette-set-default
 	Scene.field -> scene
 	field-draw-background
 }
@@ -737,7 +734,7 @@ var Campfire campfire
 
 fun campfire-init ( -- ) {
 	campfire-update-palette
-	0 campfire-set-fuel
+	CAMPFIRE_MAX_FUEL campfire-set-fuel
 	CAMPFIRE_TIMER_DELAY -> campfire.timer
 }
 
@@ -761,10 +758,10 @@ fun campfire-update-palette ( -- ) {
 	// TODO: would be cool to refactor this to a macro if UXNSMAL had a macro system...
 	campfire.fuel to-short LERP_COLOR_RESOLUTION mul CAMPFIRE_CRITICAL_FUEL div sth
 
-	sth-rk 0x5* 0xf* lerp-color
-	sth-rk 0x0* 0xa* lerp-color 0x40 shift or
-	sth-rk 0x0* 0x0* lerp-color 0x80 shift or
-	sth-r  0x0* 0xf* lerp-color 0xc0 shift or -> (c)
+	sth-rk 0x5* DEFAULT_RGB4 lerp-color
+	sth-rk 0x0* DEFAULT_RGB3 lerp-color 0x40 shift or
+	sth-rk 0x0* DEFAULT_RGB2 lerp-color 0x80 shift or
+	sth-r  0x0* DEFAULT_RGB1 lerp-color 0xc0 shift or -> (c)
 	(c) dup System.r output
 	(c) dup System.g output
 	(c)     System.b output
