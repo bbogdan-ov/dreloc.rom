@@ -893,22 +893,23 @@ fun flakes-draw ( -- ) {
 // ==============================
 
 fun clamp ( short:value short:min short:max -- short ) {
-	sth sth
-
-	sth-r lth-k (value min _) if { pop-r nip return } else { pop }
-	sth-r gth-k (value max _) if {       nip return } else { pop }
-	(value)
+	rot (max value) min2 (min _) max2
 }
 
 fun min ( byte:a byte:b -- byte ) {
-	over over (a b) gth
+	gth-k
 	if   { nip (b) -> (_) }
 	else { pop (a) -> (_) }
 }
 fun min2 ( short:a short:b -- short ) {
-	over over (a b) gth
+	gth-k
 	if   { nip (b) -> (_) }
 	else { pop (a) -> (_) }
+}
+fun max2 ( short:a short:b -- short ) {
+	gth-k
+	if   { pop (a) -> (_) }
+	else { nip (b) -> (_) }
 }
 
 // Snap value to the grid
