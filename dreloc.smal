@@ -168,7 +168,6 @@ fun on-mouse ( -> ) {
 	}
 }
 
-
 // Set the default palette
 fun palette-set-default ( -- ) {
 	DEFAULT_RGB_ALL System.r output
@@ -308,6 +307,7 @@ const short FIELD_FADE_IN_TIME       { 100* }
 fun goto-field ( -- ) {
 	Scene.field -> scene
 	field-draw-background
+	dreloc-reset
 }
 
 fun field-draw-foreground ( -- ) {
@@ -368,10 +368,11 @@ fun goto-synergy ( -- ) {
 	palette-set-cyan
 	Scene.synergy -> scene
 	synergy-draw-background
+	dreloc-reset
 }
 
 fun synergy-draw-foreground ( -- ) {
-	elapsed 20* mod2 0* eq if { synergy-draw-background }
+	elapsed 10* mod2 0* eq if { synergy-draw-background }
 
 	clear-foreground
 
@@ -397,27 +398,26 @@ fun synergy-draw-background ( -- ) {
 var short waves-frame
 
 fun draw-waves ( -- ) {
-	0b01010110 Screen.auto output
+	0b10010110 Screen.auto output
 
-	SCREEN_WIDTH 4* div draw-wave
+	{ 64* 128* } draw-wave
+	{ 128* 90* } draw-wave
 
-	SCREEN_WIDTH SCREEN_WIDTH 4* div sub draw-wave
+	{ 350* 400* } draw-wave
+	{ 300* 430* } draw-wave
+
+	{ 330* 140* } draw-wave
+	{ 100* 400* } draw-wave
 
 	waves-frame inc WAVE_FRAMES mod2 -> waves-frame
 }
 
-fun draw-wave ( short:y -- ) {
-	sth
-	0* -> (idx) while dup 11* lth {
-		dup (idx) WAVE_WIDTH mul Screen.x output
-		sth-rk (y)               Screen.y output
+fun draw-wave ( short:x short:y -- ) {
+	(y) Screen.y output
+	(x) Screen.x output
 
-		&sprite-wave { waves-frame WAVE_FRAME_STRIDE mul } add Screen.addr output
-		0b00001010 Screen.sprite output
-
-		(idx) inc
-	} pop
-	pop-r
+	&sprite-wave { waves-frame WAVE_FRAME_STRIDE mul } add Screen.addr output
+	0b00001010 Screen.sprite output
 }
 
 // ==============================
@@ -479,6 +479,10 @@ fun dreloc-init ( -- ) {
 	Dir.right -> dreloc.walk-dir
 	State.rest dreloc-set-state
 	DRELOC_REST_FRAMES FRAME_DELAY mul -> dreloc.rest-frame
+}
+
+fun dreloc-reset ( -- ) {
+	0 -> dreloc.is-picking
 }
 
 fun dreloc-update ( -- ) {
@@ -1172,7 +1176,7 @@ data sprite-grass { include "assets/grass.icn" }
 
 // Wave
 data sprite-wave { include "assets/wave.icn" }
-const short WAVE_WIDTH        { 48* }
+const short WAVE_WIDTH        { 80* }
 const short WAVE_HEIGHT       { 8* }
-const short WAVE_FRAMES       { 4* }
-const short WAVE_FRAME_STRIDE { 48* }
+const short WAVE_FRAMES       { 10* }
+const short WAVE_FRAME_STRIDE { 80* }
