@@ -54,7 +54,7 @@ fun Dir-invert ( Dir -- Dir ) {
 	else { pop Dir.down }
 }
 
-enum byte Scene { intro field synergy }
+enum byte Scene { intro none field synergy }
 
 const short SCREEN_WIDTH  { 512* }
 const short SCREEN_HEIGHT { 512* }
@@ -64,12 +64,21 @@ const short GRID_SIZE { 16* }
 // Delay between anim frames in game frames
 const byte FRAME_DELAY { 8 }
 
+// Duration of the scene transition in game frames
+const short TRANSITION_DURATION { 200* }
+
 // Palette colors
 const short DEFAULT_RGB_ALL { 0xf0af* }
 const short DEFAULT_RGB1 { 0xf* }
 const short DEFAULT_RGB2 { 0x0* }
 const short DEFAULT_RGB3 { 0xa* }
 const short DEFAULT_RGB4 { 0xf* }
+
+const short DARKNESS_RGB_ALL { 0x0005* }
+const short DARKNESS_RGB1 { 0x0* }
+const short DARKNESS_RGB2 { 0x0* }
+const short DARKNESS_RGB3 { 0x0* }
+const short DARKNESS_RGB4 { 0x5* }
 
 const short CYAN_R_ALL  { 0x504f* }
 const short CYAN_GB_ALL { 0xa06f* }
@@ -94,8 +103,13 @@ var Cursor cursor
 
 // Number of frames elapsed from the start
 var short elapsed
+
 // Current scene
 var Scene scene
+var Scene next-scene
+
+// Current transition frame
+var short transition-frame
 
 // ==============================
 // Vectors
@@ -122,20 +136,18 @@ fun on-reset ( -> ) {
 fun on-screen ( -> ) {
 	scene Scene.intro eq if {
 		intro-draw-foreground
-
-		intro-update-palette
 	} elif scene Scene.field eq {
 		field-draw-foreground
 
 		dreloc-update
 		campfire-update
-
-		field-update-palette
 	} elif scene Scene.synergy eq {
 		synergy-draw-foreground
 
 		dreloc-update
 	}
+
+	update-transition
 
 	elapsed inc -> elapsed
 }
@@ -145,7 +157,9 @@ fun on-mouse ( -> ) {
 	Mouse.y input2 -> cursor.y
 
 	// Disable mouse in the "intro" scene
-	scene Scene.field eq if {
+	scene Scene.field eq
+	next-scene Scene.none eq and
+	if {
 		// Check whether the cursor is hovering over a non-picked up flower
 		cursor.y FLOWERS_GAP_Y sub FLOWERS_GAP_Y div -> (flower-idx) sth
 		sth-rk (flower-idx) flowers[].picked not if {
@@ -186,6 +200,92 @@ fun palette-set-cyan ( -- ) {
 	CYAN_GB_ALL System.b output
 }
 
+fun goto-scene ( Scene -- ) {
+	dup next-scene eq if { pop return }
+	-> next-scene
+	0* -> transition-frame
+}
+fun switch-scenes ( -- ) {
+	next-scene -> scene
+	Scene.none -> next-scene
+
+	scene Scene.field eq if {
+		field-draw-background
+	} elif scene Scene.synergy eq {
+		synergy-draw-background
+		dreloc-reset
+	}
+}
+
+fun update-transition ( -- ) {
+	transition-frame TRANSITION_DURATION lth if {
+		transition-frame inc -> transition-frame
+	} else {
+		return
+	}
+
+	// Switch scenes in the middle of the transition
+	{ TRANSITION_DURATION 2* div } transition-frame eq if {
+		switch-scenes
+	}
+
+	// Normalize `transition-frame` to range 0-LERP_MAX_ALPHA
+	transition-frame LERP_MAX_ALPHA mul { TRANSITION_DURATION 2* div } div -> (alpha)
+
+	scene Scene.intro eq
+	next-scene { dup Scene.intro eq } { swap Scene.none eq } or
+	and if {
+		(alpha) 2* div -> (alpha)
+	} else {
+		// Ping-pong alpha
+		(alpha) dup LERP_MAX_ALPHA lth if {
+			LERP_MAX_ALPHA swap (_ alpha) sub -> (alpha)
+		} else {
+			(alpha) LERP_MAX_ALPHA sub -> (alpha)
+		}
+	}
+
+	(alpha) sth
+
+	// Smoothly interpolate different palettes based on the scenes
+	// we are currently transitioning to
+	next-scene Scene.intro   eq
+	scene      Scene.intro   eq or
+	scene      Scene.synergy eq or
+	if {
+		sth-rk 0x0* CYAN_RGB4 lerp-color
+		sth-rk 0x0* CYAN_R3   lerp-color 0x40 shift or
+		sth-rk 0x0* CYAN_RGB2 lerp-color 0x80 shift or
+		sth-rk 0x0* CYAN_R1   lerp-color 0xc0 shift or -> (r)
+		(r) System.r output
+
+		sth-rk 0x0* CYAN_RGB4 lerp-color
+		sth-rk 0x0* CYAN_GB3  lerp-color 0x40 shift or
+		sth-rk 0x0* CYAN_RGB2 lerp-color 0x80 shift or
+		sth-rk 0x0* CYAN_GB1  lerp-color 0xc0 shift or -> (c)
+		(c) dup System.g output
+		(c)     System.b output
+	} elif next-scene Scene.synergy eq {
+		sth-rk 0x0* DARKNESS_RGB4 lerp-color
+		sth-rk 0x0* DARKNESS_RGB3 lerp-color 0x40 shift or
+		sth-rk 0x0* DARKNESS_RGB2 lerp-color 0x80 shift or
+		sth-rk 0x0* DARKNESS_RGB1 lerp-color 0xc0 shift or -> (c)
+		(c) dup System.r output
+		(c) dup System.g output
+		(c)     System.b output
+	} elif scene Scene.field eq {
+		sth-rk 0x0* DEFAULT_RGB4 lerp-color
+		sth-rk 0x0* DEFAULT_RGB3 lerp-color 0x40 shift or
+		sth-rk 0x0* DEFAULT_RGB2 lerp-color 0x80 shift or
+		sth-rk 0x0* DEFAULT_RGB1 lerp-color 0xc0 shift or -> (c)
+		(c) dup System.r output
+		(c) dup System.g output
+		(c)     System.b output
+	}
+
+	pop-r
+}
+
 // ==============================
 // Intro
 // ==============================
@@ -201,12 +301,14 @@ const short INTRO_NIMB_X { SCREEN_WIDTH 2* div }
 const short INTRO_NIMB_Y { { SCREEN_HEIGHT 2* div } 48* sub }
 const short INTRO_NIMB_TIME { 200* } // Game frame at which nimb animation should stop
 
-const short INTRO_FADE_IN_TIME        { 100* }
 const short INTRO_FADE_OUT_START_TIME { 300* }
-const short INTRO_FADE_OUT_TIME       { 100* }
 
 fun intro-draw-foreground ( -- ) {
 	elapsed 10* mod2 0* eq if { intro-draw-background }
+
+	elapsed INTRO_FADE_OUT_START_TIME eq if {
+		Scene.field goto-scene
+	}
 
 	clear-foreground
 
@@ -272,49 +374,9 @@ fun intro-draw-background ( -- ) {
 		output
 }
 
-fun intro-update-palette ( -- ) {
-	// Animate palette fade-in and fade-out
-	elapsed INTRO_FADE_OUT_START_TIME lth if {
-		elapsed LERP_COLOR_RESOLUTION mul INTRO_FADE_IN_TIME div -> (t)
-	} else {
-		elapsed INTRO_FADE_OUT_START_TIME sub -> (t)
-		(t) dup INTRO_FADE_OUT_TIME lth if {
-			(t) LERP_COLOR_RESOLUTION mul INTRO_FADE_OUT_TIME div -> (t)
-			LERP_COLOR_RESOLUTION swap (_ t) sub -> (t)
-		} else {
-			goto-field
-			(t) pop return
-		}
-	}
-
-	(t) sth {
-		sth-rk 0x0* CYAN_RGB4 lerp-color
-		sth-rk 0x0* CYAN_R3   lerp-color 0x40 shift or
-		sth-rk 0x0* CYAN_RGB2 lerp-color 0x80 shift or
-		sth-rk 0x0* CYAN_R1   lerp-color 0xc0 shift or -> (r)
-		(r) System.r output
-
-		sth-rk 0x0* CYAN_RGB4 lerp-color
-		sth-rk 0x0* CYAN_GB3  lerp-color 0x40 shift or
-		sth-rk 0x0* CYAN_RGB2 lerp-color 0x80 shift or
-		sth-rk 0x0* CYAN_GB1  lerp-color 0xc0 shift or -> (c)
-		(c) dup System.g output
-		(c)     System.b output
-	} pop-r
-}
-
 // ==============================
 // Field
 // ==============================
-
-const short FIELD_FADE_IN_START_TIME { INTRO_FADE_OUT_START_TIME INTRO_FADE_OUT_TIME add }
-const short FIELD_FADE_IN_TIME       { 100* }
-
-fun goto-field ( -- ) {
-	Scene.field -> scene
-	field-draw-background
-	dreloc-reset
-}
 
 fun field-draw-foreground ( -- ) {
 	clear-foreground
@@ -350,30 +412,9 @@ fun field-draw-background ( -- ) {
 	campfire-draw
 }
 
-fun field-update-palette ( -- ) {
-	// Animate fade-in
-	elapsed { FIELD_FADE_IN_START_TIME FIELD_FADE_IN_TIME add } gth not if {
-		elapsed FIELD_FADE_IN_START_TIME sub LERP_COLOR_RESOLUTION mul FIELD_FADE_IN_TIME div sth
-		sth-rk 0x0* DEFAULT_RGB4 lerp-color
-		sth-rk 0x0* DEFAULT_RGB3 lerp-color 0x40 shift or
-		sth-rk 0x0* DEFAULT_RGB2 lerp-color 0x80 shift or
-		sth-r  0x0* DEFAULT_RGB1 lerp-color 0xc0 shift or -> (c)
-		(c) dup System.r output
-		(c) dup System.g output
-		(c)     System.b output
-	}
-}
-
 // ==============================
 // Synergy
 // ==============================
-
-fun goto-synergy ( -- ) {
-	palette-set-cyan
-	Scene.synergy -> scene
-	synergy-draw-background
-	dreloc-reset
-}
 
 fun synergy-draw-foreground ( -- ) {
 	elapsed 10* mod2 0* eq if { synergy-draw-background }
@@ -750,7 +791,7 @@ fun campfire-update ( -- ) {
 	campfire.timer 0 eq if {
 		CAMPFIRE_TIMER_DELAY -> campfire.timer
 		campfire.fuel 0 eq if {
-			goto-synergy
+			Scene.synergy goto-scene
 		} else {
 			campfire.fuel 1 sub campfire-set-fuel
 		}
@@ -764,12 +805,12 @@ fun campfire-update ( -- ) {
 
 fun campfire-update-palette ( -- ) {
 	// TODO: would be cool to refactor this to a macro if UXNSMAL had a macro system...
-	campfire.fuel to-short LERP_COLOR_RESOLUTION mul CAMPFIRE_CRITICAL_FUEL div sth
+	campfire.fuel to-short LERP_MAX_ALPHA mul CAMPFIRE_CRITICAL_FUEL div sth
 
-	sth-rk 0x5* DEFAULT_RGB4 lerp-color
-	sth-rk 0x0* DEFAULT_RGB3 lerp-color 0x40 shift or
-	sth-rk 0x0* DEFAULT_RGB2 lerp-color 0x80 shift or
-	sth-r  0x0* DEFAULT_RGB1 lerp-color 0xc0 shift or -> (c)
+	sth-rk DARKNESS_RGB4 DEFAULT_RGB4 lerp-color
+	sth-rk DARKNESS_RGB3 DEFAULT_RGB3 lerp-color 0x40 shift or
+	sth-rk DARKNESS_RGB2 DEFAULT_RGB2 lerp-color 0x80 shift or
+	sth-r  DARKNESS_RGB1 DEFAULT_RGB1 lerp-color 0xc0 shift or -> (c)
 	(c) dup System.r output
 	(c) dup System.g output
 	(c)     System.b output
@@ -1089,13 +1130,13 @@ fun sin ( short -- byte ) {
 	SINE_LOOKUP_N mod2 sine-lookup[]
 }
 
-const short LERP_COLOR_RESOLUTION { 100* }
+const short LERP_MAX_ALPHA { 100* }
 
 fun lerp-color ( short:alpha short:from short:to -- short ) {
 	over (to from) sub -> (diff)
 	rot (from diff alpha)
-	(alpha) LERP_COLOR_RESOLUTION min2 -> (alpha) // Clamp alpha so lerp doesn't overshoot
-	(diff alpha) mul LERP_COLOR_RESOLUTION div -> (delta)
+	(alpha) LERP_MAX_ALPHA min2 -> (alpha) // Clamp alpha so lerp doesn't overshoot
+	(diff alpha) mul LERP_MAX_ALPHA div -> (delta)
 	(from delta) add
 }
 
