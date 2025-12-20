@@ -54,7 +54,7 @@ fun Dir-invert ( Dir -- Dir ) {
 	else { pop Dir.down }
 }
 
-enum byte Scene { intro none field synergy }
+enum byte Scene { intro field synergy none }
 
 const short SCREEN_WIDTH  { 512* }
 const short SCREEN_HEIGHT { 512* }
@@ -213,7 +213,13 @@ fun switch-scenes ( -- ) {
 		field-draw-background
 	} elif scene Scene.synergy eq {
 		synergy-draw-background
-		dreloc-reset
+
+		100* -> dreloc.x
+		280* -> dreloc.y
+		Dir.down -> dreloc.walk-dir
+		State.rest dreloc-set-state
+		DRELOC_REST_FRAMES FRAME_DELAY mul -> dreloc.rest-frame
+		0 -> dreloc.is-picking
 	}
 }
 
@@ -524,10 +530,6 @@ fun dreloc-init ( -- ) {
 	Dir.right -> dreloc.walk-dir
 	State.rest dreloc-set-state
 	DRELOC_REST_FRAMES FRAME_DELAY mul -> dreloc.rest-frame
-}
-
-fun dreloc-reset ( -- ) {
-	0 -> dreloc.is-picking
 }
 
 fun dreloc-update ( -- ) {
