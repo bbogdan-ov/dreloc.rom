@@ -340,7 +340,7 @@ fun field-draw-background ( -- ) {
 
 		prng { SCREEN_WIDTH GRASS_WIDTH sub }   mod2 Screen.x output
 		prng { SCREEN_HEIGHT GRASS_HEIGHT sub } mod2 Screen.y output
-		0b00000010 Screen.sprite output-k output
+		0b00001010 Screen.sprite output-k output
 		(idx) inc
 	} pop
 
