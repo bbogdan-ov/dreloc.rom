@@ -46,7 +46,15 @@ untyped enum byte DateTime {
 
 enum byte Dir { down left up right }
 
-enum byte Scene { intro field }
+fun Dir-invert ( Dir -- Dir ) {
+	/**/ dup Dir.down eq if { pop Dir.up }
+	elif dup Dir.left eq    { pop Dir.right }
+	elif dup Dir.up eq      { pop Dir.down }
+	elif dup Dir.right eq   { pop Dir.left }
+	else { pop Dir.down }
+}
+
+enum byte Scene { intro field synergy }
 
 const short SCREEN_WIDTH  { 512* }
 const short SCREEN_HEIGHT { 512* }
@@ -55,6 +63,22 @@ const short GRID_SIZE { 16* }
 
 // Delay between anim frames in game frames
 const byte FRAME_DELAY { 8 }
+
+// Palette colors
+const short DEFAULT_RGB_ALL { 0xf0af* }
+const short DEFAULT_RGB1 { 0xf* }
+const short DEFAULT_RGB2 { 0x0* }
+const short DEFAULT_RGB3 { 0xa* }
+const short DEFAULT_RGB4 { 0xf* }
+
+const short CYAN_R_ALL  { 0x504f* }
+const short CYAN_GB_ALL { 0xa06f* }
+const short CYAN_R1   { 0x5* }
+const short CYAN_R3   { 0x4* }
+const short CYAN_GB1  { 0xa* }
+const short CYAN_RGB2 { 0x0* }
+const short CYAN_GB3  { 0x6* }
+const short CYAN_RGB4 { 0xf* }
 
 // ==============================
 // Variables
@@ -84,23 +108,31 @@ fun on-reset ( -> ) {
 	&on-screen Screen.vector output
 	&on-mouse  Mouse.vector output
 
+	palette-set-default
 	prng-init
 	dreloc-init
 	campfire-init
+
 	intro-draw-background
 
 	flowers-populate
 	flakes-populate
+
+	goto-field
 }
 
 fun on-screen ( -> ) {
 	scene Scene.intro eq if {
 		intro-draw-foreground
-	} else {
+	} elif scene Scene.field eq {
+		field-draw-foreground
+
 		dreloc-update
 		campfire-update
+	} elif scene Scene.synergy eq {
+		synergy-draw-foreground
 
-		field-draw-foreground
+		dreloc-update
 	}
 
 	elapsed inc -> elapsed
@@ -110,34 +142,47 @@ fun on-mouse ( -> ) {
 	Mouse.x input2 -> cursor.x
 	Mouse.y input2 -> cursor.y
 
-	scene Scene.field neq if { return }
+	// Disable mouse in the "intro" scene
+	scene Scene.field eq if {
+		// Check whether the cursor is hovering over a non-picked up flower
+		cursor.y FLOWERS_GAP_Y sub FLOWERS_GAP_Y div -> (flower-idx) sth
+		sth-rk (flower-idx) flowers[].picked not if {
+			sth-rk (flower-idx) flowers[].x sth
+			sth-rk cursor.x lth
+			sth-r  cursor.x FLOWER_WIDTH sub gth
+			and -> (picking)
+		} else {
+			0 -> (picking)
+		}
 
-	// Check whether the cursor is hovering over a non-picked up flower
-	cursor.y FLOWERS_GAP_Y sub FLOWERS_GAP_Y div -> (flower-idx) sth
-	sth-rk (flower-idx) flowers[].picked not if {
-		sth-rk (flower-idx) flowers[].x sth
-		sth-rk cursor.x lth
-		sth-r  cursor.x FLOWER_WIDTH sub gth
-		and -> (picking)
-	} else {
-		0 -> (picking)
+		(picking) -> cursor.grab
+
+		Mouse.state input if {
+			cursor.grab -> dreloc.is-picking
+			cursor.grab if { sth-rk (flower-idx) -> dreloc.pick-idx }
+
+			dreloc-move-to-cursor
+		}
+
+		pop-r
+	} elif scene Scene.synergy eq {
+		Mouse.state input if { dreloc-move-to-cursor }
 	}
-
-	(picking) -> cursor.grab
-
-	Mouse.state input if {
-		cursor.grab -> dreloc.is-picking
-		cursor.grab if { sth-rk (flower-idx) -> dreloc.pick-idx }
-
-		dreloc-move-to-cursor
-	}
-
-	pop-r
 }
 
-fun goto-field ( -- ) {
-	Scene.field -> scene
-	field-draw-background
+
+// Set the default palette
+fun palette-set-default ( -- ) {
+	DEFAULT_RGB_ALL System.r output
+	DEFAULT_RGB_ALL System.g output
+	DEFAULT_RGB_ALL System.b output
+}
+
+// Set the cyan palette
+fun palette-set-cyan ( -- ) {
+	CYAN_R_ALL System.r output
+	CYAN_GB_ALL System.g output
+	CYAN_GB_ALL System.b output
 }
 
 // ==============================
@@ -160,16 +205,11 @@ const short INTRO_FADE_OUT_START_TIME { 300* }
 const short INTRO_FADE_OUT_TIME       { 100* }
 
 fun intro-draw-foreground ( -- ) {
-	// Clear layer
-	0* Screen.x output
-	0* Screen.y output
-	0b11000000 Screen.pixel output
-
 	intro-update-palette
 
-	// Draw nimb
-	0b01000110 Screen.auto output
+	clear-foreground
 
+	// Draw nimb
 	// Animate nimb Y position using lerp and ease-out-quant
 	// There is a lot of magic numbers, i know
 	{
@@ -191,34 +231,11 @@ fun intro-draw-foreground ( -- ) {
 		(from delta) add
 	} -> (nimb-y)
 
-	// Draw right part
-	&sprite-nimb Screen.addr output
-	INTRO_NIMB_X Screen.x output
-	(nimb-y) dup Screen.y output
-	0b01001111   Screen.sprite
-		output-k
-		output-k
-		output-k
-		output-k
-		output
-
-	// Draw left part
-	&sprite-nimb        Screen.addr output
-	INTRO_NIMB_X 8* sub Screen.x output
-	(nimb-y)            Screen.y output
-	0b01011111          Screen.sprite
-		output-k
-		output-k
-		output-k
-		output-k
-		output
+	INTRO_NIMB_X swap (_ nimb-y) nimb-draw
 }
 
 fun intro-draw-background ( -- ) {
-	// Clear layer
-	0* Screen.x output
-	0* Screen.y output
-	0b10000000 Screen.pixel output
+	clear-background
 
 	// Draw bloom
 	&sprite-bloom Screen.addr output
@@ -268,16 +285,16 @@ fun intro-update-palette ( -- ) {
 	}
 
 	(t) sth {
-		sth-rk 0x0* 0xf* lerp-color
-		sth-rk 0x0* 0xa* lerp-color 0x40 shift or
-		sth-rk 0x0* 0x0* lerp-color 0x80 shift or
-		sth-rk 0x0* 0x5* lerp-color 0xc0 shift or -> (r)
+		sth-rk 0x0* CYAN_RGB4 lerp-color
+		sth-rk 0x0* CYAN_R3   lerp-color 0x40 shift or
+		sth-rk 0x0* CYAN_RGB2 lerp-color 0x80 shift or
+		sth-rk 0x0* CYAN_R1   lerp-color 0xc0 shift or -> (r)
 		(r) System.r output
 
-		sth-rk 0x0* 0xf* lerp-color
-		sth-rk 0x0* 0xa* lerp-color 0x40 shift or
-		sth-rk 0x0* 0x0* lerp-color 0x80 shift or
-		sth-rk 0x0* 0xa* lerp-color 0xc0 shift or -> (c)
+		sth-rk 0x0* CYAN_RGB4 lerp-color
+		sth-rk 0x0* CYAN_GB3  lerp-color 0x40 shift or
+		sth-rk 0x0* CYAN_RGB2 lerp-color 0x80 shift or
+		sth-rk 0x0* CYAN_GB1  lerp-color 0xc0 shift or -> (c)
 		(c) dup System.g output
 		(c)     System.b output
 	} pop-r
@@ -290,23 +307,16 @@ fun intro-update-palette ( -- ) {
 const short FIELD_FADE_IN_START_TIME { INTRO_FADE_OUT_START_TIME INTRO_FADE_OUT_TIME add }
 const short FIELD_FADE_IN_TIME       { 100* }
 
-fun field-draw-foreground ( -- ) {
-	// Clear layer
-	0* Screen.x output
-	0* Screen.y output
-	0b11000000 Screen.pixel output
+fun goto-field ( -- ) {
+	palette-set-default
+	Scene.field -> scene
+	field-draw-background
+}
 
-	// Animate fade-in
-	elapsed { FIELD_FADE_IN_START_TIME FIELD_FADE_IN_TIME add } gth not if {
-		elapsed FIELD_FADE_IN_START_TIME sub LERP_COLOR_RESOLUTION mul FIELD_FADE_IN_TIME div sth
-		sth-rk 0x0* 0xf* lerp-color
-		sth-rk 0x0* 0xa* lerp-color 0x40 shift or
-		sth-rk 0x0* 0x0* lerp-color 0x80 shift or
-		sth-r  0x0* 0xf* lerp-color 0xc0 shift or -> (c)
-		(c) dup System.r output
-		(c) dup System.g output
-		(c)     System.b output
-	}
+fun field-draw-foreground ( -- ) {
+	field-update-palette
+
+	clear-foreground
 
 	// Calculate index used for slicing the array of flowers
 	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } FLOWERS_GAP_Y div -> (idx)
@@ -318,19 +328,11 @@ fun field-draw-foreground ( -- ) {
 	(idx) flowers-draw-above
 	flakes-draw
 
-	// Draw mouse cursor
-	&sprite-cursor cursor.grab if { 64* add } Screen.addr output
-	0b00010110 Screen.auto output
-	cursor.x   Screen.x output
-	cursor.y   Screen.y output
-	0b11000101 Screen.sprite output-k output
+	cursor-draw
 }
 
 fun field-draw-background ( -- ) {
-	// Clear layer
-	0* Screen.x output
-	0* Screen.y output
-	0b10000000 Screen.pixel output
+	clear-background
 
 	// Draw patches of grass
 	0b00010110 Screen.auto output
@@ -347,14 +349,89 @@ fun field-draw-background ( -- ) {
 	campfire-draw
 }
 
+fun field-update-palette ( -- ) {
+	// Animate fade-in
+	elapsed { FIELD_FADE_IN_START_TIME FIELD_FADE_IN_TIME add } gth not if {
+		elapsed FIELD_FADE_IN_START_TIME sub LERP_COLOR_RESOLUTION mul FIELD_FADE_IN_TIME div sth
+		sth-rk 0x0* DEFAULT_RGB4 lerp-color
+		sth-rk 0x0* DEFAULT_RGB3 lerp-color 0x40 shift or
+		sth-rk 0x0* DEFAULT_RGB2 lerp-color 0x80 shift or
+		sth-r  0x0* DEFAULT_RGB1 lerp-color 0xc0 shift or -> (c)
+		(c) dup System.r output
+		(c) dup System.g output
+		(c)     System.b output
+	}
+}
+
+// ==============================
+// Synergy
+// ==============================
+
+fun goto-synergy ( -- ) {
+	palette-set-cyan
+	Scene.synergy -> scene
+	synergy-draw-background
+}
+
+fun synergy-draw-foreground ( -- ) {
+	elapsed 20* mod2 0* eq if { synergy-draw-background }
+
+	clear-foreground
+
+	dreloc.y dreloc.mirrored-y lth -> (below)
+	(below) dup not if { dreloc-draw-mirrored }
+
+	dreloc-draw
+	{
+		dreloc.x { DRELOC_WIDTH 2* div } add
+		dreloc.y 16* sub
+	} nimb-draw
+
+	(below) if { dreloc-draw-mirrored }
+
+	cursor-draw
+}
+
+fun synergy-draw-background ( -- ) {
+	clear-background
+	draw-waves
+}
+
+var short waves-frame
+
+fun draw-waves ( -- ) {
+	0b01010110 Screen.auto output
+
+	SCREEN_WIDTH 4* div draw-wave
+
+	SCREEN_WIDTH SCREEN_WIDTH 4* div sub draw-wave
+
+	waves-frame inc WAVE_FRAMES mod2 -> waves-frame
+}
+
+fun draw-wave ( short:y -- ) {
+	sth
+	0* -> (idx) while dup 11* lth {
+		dup (idx) WAVE_WIDTH mul Screen.x output
+		sth-rk (y)               Screen.y output
+
+		&sprite-wave { waves-frame WAVE_FRAME_STRIDE mul } add Screen.addr output
+		0b00001010 Screen.sprite output
+
+		(idx) inc
+	} pop
+	pop-r
+}
+
 // ==============================
 // Dreloc
 // ==============================
 
-const short DRELOC_WIDTH      { 72* }
-const short DRELOC_HEIGHT     { 96* }
-const short DRELOC_WALK_SPEED { 2* }
-const byte  DRELOC_COLOR      { 5 }
+const short DRELOC_WIDTH          { 72* }
+const short DRELOC_HEIGHT         { 96* }
+const short DRELOC_WALK_SPEED     { 2* }
+const byte  DRELOC_COLOR          { 0x5 }
+const byte  MIRRORED_DRELOC_COLOR { 0xa }
 
 const byte DRELOC_REST_DELAY { 120 }
 
@@ -381,6 +458,10 @@ struct Dreloc {
 	short prev-y
 	short target-x
 	short target-y
+
+	// Precalculated position of the mirrored Dreloc
+	short mirrored-x
+	short mirrored-y
 
 	State state
 	byte  is-picking
@@ -418,6 +499,13 @@ fun dreloc-update ( -- ) {
 	elif dreloc.state State.rest     eq { dreloc-update-sit-down-anim }
 	elif dreloc.state State.stand-up eq { dreloc-update-stand-up-anim }
 	elif dreloc.state State.pick     eq { dreloc-update-pick-up-anim }
+
+	scene Scene.synergy eq if {
+		SCREEN_WIDTH  dreloc.x sub DRELOC_WIDTH  sub -> (x)
+		SCREEN_HEIGHT dreloc.y sub DRELOC_HEIGHT sub -> (y)
+		(y) -> dreloc.mirrored-y
+		(x) -> dreloc.mirrored-x
+	}
 }
 
 fun dreloc-update-movement ( -- ) {
@@ -432,6 +520,8 @@ fun dreloc-update-movement ( -- ) {
 	} else {
 		dreloc.is-picking if { State.pick } else { State.idle } dreloc-set-state
 	}
+
+	scene Scene.field neq if { return }
 	
 	// Check whether Dreloc overlaps with the campfire
 	CAMPFIRE_X      { dreloc.x DRELOC_WIDTH 2* div add }         lth
@@ -485,12 +575,37 @@ fun dreloc-rest-frame-offset ( short:idx -- short ) {
 }
 
 fun dreloc-draw ( -- ) {
+	dreloc.x Screen.x output
+	dreloc.y Screen.y output
+
+	{
+		0b11000000 DRELOC_COLOR or
+		0*
+		dreloc.walk-dir
+	} sprite-dreloc-draw
+}
+
+fun dreloc-draw-mirrored ( -- ) {
+	dreloc.mirrored-x Screen.x output
+	dreloc.mirrored-y Screen.y output
+
+	{
+		0b11000000 MIRRORED_DRELOC_COLOR or -> (bits)
+		{
+			elapsed dup mul 33* mod2 10* lth
+			if { elapsed 6* mod2 4* mul } else { 0* }
+		} -> (offset)
+		dreloc.walk-dir Dir-invert -> (dir)
+	} (bits offset dir) sprite-dreloc-draw
+}
+
+fun sprite-dreloc-draw ( byte:bits short:data-offset Dir:dir -- ) {
 	// Choose frame based on in which direction Dreloc is looking
-	/**/ dreloc.walk-dir Dir.down  eq if { 0* }
-	elif dreloc.walk-dir Dir.left  eq    { DRELOC_FRAME_STRIDE 3* mul }
-	elif dreloc.walk-dir Dir.up    eq    { DRELOC_FRAME_STRIDE 6* mul }
-	elif dreloc.walk-dir Dir.right eq    { DRELOC_FRAME_STRIDE 9* mul }
-	else { 0* } -> (frame)
+	/**/ dup Dir.down  eq if { pop (data-offset) -> (_) }
+	elif dup Dir.left  eq    { pop (data-offset) DRELOC_FRAME_STRIDE 3* mul add }
+	elif dup Dir.up    eq    { pop (data-offset) DRELOC_FRAME_STRIDE 6* mul add }
+	elif dup Dir.right eq    { pop (data-offset) DRELOC_FRAME_STRIDE 9* mul add }
+	else { pop (data-offset) -> (_) } -> (frame)
 
 	dreloc.state State.walk eq if {
 		{ dreloc.walk-frame FRAME_DELAY } div sth
@@ -516,11 +631,8 @@ fun dreloc-draw ( -- ) {
 
 	{ (frame) &sprite-dreloc add } Screen.addr output
 
-	dreloc.x Screen.x output
-	dreloc.y Screen.y output
-
 	0b10000110 Screen.auto output
-	0b11000000 DRELOC_COLOR or Screen.sprite
+	(bits) Screen.sprite
 		output-k
 		output-k
 		output-k
@@ -625,14 +737,18 @@ var Campfire campfire
 
 fun campfire-init ( -- ) {
 	campfire-update-palette
-	CAMPFIRE_MAX_FUEL campfire-set-fuel
+	0 campfire-set-fuel
 	CAMPFIRE_TIMER_DELAY -> campfire.timer
 }
 
 fun campfire-update ( -- ) {
 	campfire.timer 0 eq if {
 		CAMPFIRE_TIMER_DELAY -> campfire.timer
-		campfire.fuel 0 gth if { campfire.fuel 1 sub campfire-set-fuel }
+		campfire.fuel 0 eq if {
+			goto-synergy
+		} else {
+			campfire.fuel 1 sub campfire-set-fuel
+		}
 	} else {
 		campfire.timer 1 sub -> campfire.timer
 	}
@@ -892,6 +1008,17 @@ fun flakes-draw ( -- ) {
 // Utils
 // ==============================
 
+fun clear-foreground ( -- ) {
+	0* Screen.x output
+	0* Screen.y output
+	0b11000000 Screen.pixel output
+}
+fun clear-background ( -- ) {
+	0* Screen.x output
+	0* Screen.y output
+	0b10000000 Screen.pixel output
+}
+
 fun clamp ( short:value short:min short:max -- short ) {
 	rot (max value) min2 (min _) max2
 }
@@ -989,19 +1116,66 @@ data sprite-flower-2 { include "assets/flower-2.chr" }
 data sprite-flower-3 { include "assets/flower-3.chr" }
 data sprite-flower-4 { include "assets/flower-4.chr" }
 data sprite-flower-5 { include "assets/flower-5.chr" }
-data sprite-cursor   { include "assets/cursor.chr" }
 data sprite-fire     { include "assets/fire.chr" }
 
+// Mouse cursor
+data sprite-cursor   { include "assets/cursor.chr" }
+
+fun cursor-draw ( -- ) {
+	&sprite-cursor cursor.grab if { 64* add } Screen.addr output
+	0b00010110 Screen.auto output
+	cursor.x   Screen.x output
+	cursor.y   Screen.y output
+	0b11000101 Screen.sprite output-k output
+}
+
+// Nimb
 const short NIMB_WIDTH  { 40* }
 const short NIMB_HEIGHT { 40* }
 data sprite-nimb { include "assets/nimb.icn" }
 
+fun nimb-draw ( short:x short:y -- ) {
+	0b01000110 Screen.auto output
+
+	over over (x y x y)
+	// Draw right part
+	&sprite-nimb Screen.addr output
+	(y)          Screen.y output
+	(x)          Screen.x output
+	0b01001111   Screen.sprite
+		output-k
+		output-k
+		output-k
+		output-k
+		output
+
+	// Draw left part
+	&sprite-nimb Screen.addr output
+	(y)          Screen.y output
+	(x) 8* sub   Screen.x output
+	0b01011111   Screen.sprite
+		output-k
+		output-k
+		output-k
+		output-k
+		output
+}
+
+// Bloom
 const short BLOOM_WIDTH  { 80* }
 const short BLOOM_HEIGHT { 40* }
 data sprite-bloom { include "assets/bloom.icn" }
 
+// Grass
 const short GRASS_WIDTH        { 16* }
 const short GRASS_HEIGHT       { 16* }
 const short GRASS_FRAMES       { 5* }
 const short GRASS_FRAME_STRIDE { 32* }
 data sprite-grass { include "assets/grass.icn" }
+
+// Wave
+data sprite-wave { include "assets/wave.icn" }
+const short WAVE_WIDTH        { 48* }
+const short WAVE_HEIGHT       { 8* }
+const short WAVE_FRAMES       { 4* }
+const short WAVE_FRAME_STRIDE { 48* }
