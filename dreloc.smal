@@ -651,7 +651,7 @@ fun dreloc-pick-up-flower ( -- ) {
 
 fun dreloc-move-to-cursor ( -- ) {
 	{
-		{ cursor.x snap } { DRELOC_WIDTH 2* div } { SCREEN_WIDTH DRELOC_WIDTH 2* div sub } clamp
+		cursor.x { DRELOC_WIDTH 2* div } { SCREEN_WIDTH DRELOC_WIDTH 2* div sub } clamp snap
 		{ DRELOC_WIDTH 2* div } sub
 		{ GRID_SIZE 2* div } add
 	} -> dreloc.target-x
@@ -662,7 +662,7 @@ fun dreloc-move-to-cursor ( -- ) {
 		// Set target Y a bit lower when picking up a flower
 		dreloc.is-picking if { (y) FLOWER_HEIGHT 2* div add -> (y) }
 
-		{ (y) snap } DRELOC_HEIGHT SCREEN_HEIGHT clamp
+		(y) DRELOC_HEIGHT SCREEN_HEIGHT clamp snap
 		DRELOC_HEIGHT sub
 		GRID_SIZE add
 	} -> dreloc.target-y
