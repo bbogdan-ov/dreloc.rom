@@ -761,8 +761,8 @@ const short CAMPFIRE_X           { SCREEN_WIDTH 2*  div CAMPFIRE_WIDTH 2*  div s
 const short CAMPFIRE_Y           { SCREEN_HEIGHT 2* div CAMPFIRE_HEIGHT 2* div sub }
 const short CAMPFIRE_RIGHT       { CAMPFIRE_X CAMPFIRE_WIDTH add }
 const short CAMPFIRE_BOTTOM      { CAMPFIRE_Y CAMPFIRE_HEIGHT add }
-const byte  CAMPFIRE_MAX_FUEL    { 60 }
-const short CAMPFIRE_CRITICAL_FUEL { 40* }
+const byte  CAMPFIRE_MAX_FUEL    { 70 }
+const short CAMPFIRE_CRITICAL_FUEL { 50* }
 // How much fuel gives a single flower
 const byte  CAMPFIRE_FLOWER_FUEL { 6 }
 const byte  CAMPFIRE_TIMER_DELAY { 30 }
@@ -807,7 +807,8 @@ fun campfire-update ( -- ) {
 
 fun campfire-update-palette ( -- ) {
 	// TODO: would be cool to refactor this to a macro if UXNSMAL had a macro system...
-	campfire.fuel to-short LERP_MAX_ALPHA mul CAMPFIRE_CRITICAL_FUEL div sth
+	campfire.fuel 10 max 10 sub
+	to-short LERP_MAX_ALPHA mul { CAMPFIRE_CRITICAL_FUEL 10* sub } div sth
 
 	sth-rk DARKNESS_RGB4 DEFAULT_RGB4 lerp-color
 	sth-rk DARKNESS_RGB3 DEFAULT_RGB3 lerp-color 0x40 shift or
@@ -869,9 +870,9 @@ fun campfire-fire-draw ( -- ) {
 		campfire.frame { FIRE_FRAMES FRAME_DELAY mul } 1 sub eq if { 0 -> campfire.refueled-anim }
 	} else {
 		campfire.fuel sth
-		/**/ sth-rk 10 lth if { FIRE_FRAME_STRIDE 12* mul add -> (frame) }
-		elif sth-rk 20 lth    { FIRE_FRAME_STRIDE 8*  mul add -> (frame) }
-		elif sth-rk 40 lth    { FIRE_FRAME_STRIDE 4*  mul add -> (frame) }
+		/**/ sth-rk 20 lth if { FIRE_FRAME_STRIDE 12* mul add -> (frame) }
+		elif sth-rk 30 lth    { FIRE_FRAME_STRIDE 8*  mul add -> (frame) }
+		elif sth-rk 50 lth    { FIRE_FRAME_STRIDE 4*  mul add -> (frame) }
 		pop-r
 	}
 
@@ -1080,6 +1081,11 @@ fun min2 ( short:a short:b -- short ) {
 	gth-k
 	if   { nip (b) -> (_) }
 	else { pop (a) -> (_) }
+}
+fun max ( byte:a byte:b -- byte ) {
+	gth-k
+	if   { pop (a) -> (_) }
+	else { nip (b) -> (_) }
 }
 fun max2 ( short:a short:b -- short ) {
 	gth-k
