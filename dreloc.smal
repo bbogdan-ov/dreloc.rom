@@ -755,13 +755,13 @@ fun dreloc-set-state ( State -- ) {
 // Campfire
 // ==============================
 
-const short CAMPFIRE_WIDTH       { 72* }
-const short CAMPFIRE_HEIGHT      { 48* }
-const short CAMPFIRE_X           { SCREEN_WIDTH 2*  div CAMPFIRE_WIDTH 2*  div sub }
-const short CAMPFIRE_Y           { SCREEN_HEIGHT 2* div CAMPFIRE_HEIGHT 2* div sub }
-const short CAMPFIRE_RIGHT       { CAMPFIRE_X CAMPFIRE_WIDTH add }
-const short CAMPFIRE_BOTTOM      { CAMPFIRE_Y CAMPFIRE_HEIGHT add }
-const byte  CAMPFIRE_MAX_FUEL    { 70 }
+const short CAMPFIRE_WIDTH         { 72* }
+const short CAMPFIRE_HEIGHT        { 48* }
+const short CAMPFIRE_X             { SCREEN_WIDTH 2*  div CAMPFIRE_WIDTH 2*  div sub }
+const short CAMPFIRE_Y             { SCREEN_HEIGHT 2* div CAMPFIRE_HEIGHT 2* div sub }
+const short CAMPFIRE_RIGHT         { CAMPFIRE_X CAMPFIRE_WIDTH add }
+const short CAMPFIRE_BOTTOM        { CAMPFIRE_Y CAMPFIRE_HEIGHT add }
+const byte  CAMPFIRE_MAX_FUEL      { 70 }
 const short CAMPFIRE_CRITICAL_FUEL { 50* }
 // How much fuel gives a single flower
 const byte  CAMPFIRE_FLOWER_FUEL { 6 }
