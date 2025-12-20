@@ -155,9 +155,9 @@ const short INTRO_NIMB_X { SCREEN_WIDTH 2* div }
 const short INTRO_NIMB_Y { { SCREEN_HEIGHT 2* div } 48* sub }
 const short INTRO_NIMB_TIME { 200* } // Game frame at which nimb animation should stop
 
-const short INTRO_FADE_IN_TIME        { 160* }
+const short INTRO_FADE_IN_TIME        { 100* }
 const short INTRO_FADE_OUT_START_TIME { 300* }
-const short INTRO_FADE_OUT_TIME       { 160* }
+const short INTRO_FADE_OUT_TIME       { 100* }
 
 fun intro-draw-foreground ( -- ) {
 	// Clear layer
@@ -288,7 +288,7 @@ fun intro-update-palette ( -- ) {
 // ==============================
 
 const short FIELD_FADE_IN_START_TIME { INTRO_FADE_OUT_START_TIME INTRO_FADE_OUT_TIME add }
-const short FIELD_FADE_IN_TIME       { 160* }
+const short FIELD_FADE_IN_TIME       { 100* }
 
 fun field-draw-foreground ( -- ) {
 	// Clear layer
