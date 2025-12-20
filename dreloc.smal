@@ -111,6 +111,8 @@ var Scene next-scene
 // Current transition frame
 var short transition-frame
 
+var byte corruption
+
 // ==============================
 // Vectors
 // ==============================
@@ -148,6 +150,36 @@ fun on-screen ( -> ) {
 	}
 
 	update-transition
+
+	corruption if {
+		// FILL THE WHOLE ROM WITH RANDOM DATA!!
+		// Is this safe? ABSOLUTELY NOT
+
+		0* -> (i) while dup 0xf* lth {
+			prng as (*byte:addr) sth {
+				sth-rk load -> (byte)
+
+				sth-rk &sprite-dreloc gth if {
+					{ prng 255* mod2 to-byte } sth-rk store
+				} elif
+				(byte) dup 0x80 eq // LIT
+				{
+					{ prng 255* mod2 to-byte } { sth-rk 1* add } store
+				} elif
+				dup  (byte) 0xa0 eq    // LIT2
+				over (byte) 0x60 eq or // JSI
+				over (byte) 0x40 eq or // JMI
+				{
+					{ prng 255* mod2 to-byte } { sth-rk 1* add } store
+					{ prng 255* mod2 to-byte } { sth-rk 2* add } store
+				}
+
+				(byte) pop
+			} pop-r
+
+			(i) inc
+		} pop
+	}
 
 	elapsed inc -> elapsed
 }
@@ -431,12 +463,22 @@ fun synergy-draw-foreground ( -- ) {
 	(below) dup not if { dreloc-draw-mirrored }
 
 	dreloc-draw
+
 	{
 		dreloc.x { DRELOC_WIDTH 2* div } add
 		dreloc.y 16* sub
 	} nimb-draw
 
 	(below) if { dreloc-draw-mirrored }
+
+	// Check if Dreloc and mirrored Dreloc are colliding...
+	{ dreloc.x DRELOC_WIDTH add } dreloc.mirrored-x gth
+	dreloc.x { dreloc.mirrored-x DRELOC_WIDTH add } lth and
+	{ dreloc.y DRELOC_HEIGHT add } { dreloc.mirrored-y DRELOC_HEIGHT add GRID_SIZE sub } gth and
+	{ dreloc.y DRELOC_HEIGHT add GRID_SIZE sub } { dreloc.mirrored-y DRELOC_HEIGHT add } lth and
+	if {
+		1 -> corruption
+	}
 
 	cursor-draw
 }
@@ -1058,14 +1100,18 @@ fun flakes-draw ( -- ) {
 // ==============================
 
 fun clear-foreground ( -- ) {
-	0* Screen.x output
-	0* Screen.y output
-	0b11000000 Screen.pixel output
+	corruption not if {
+		0* Screen.x output
+		0* Screen.y output
+		0b11000000 Screen.pixel output
+	}
 }
 fun clear-background ( -- ) {
-	0* Screen.x output
-	0* Screen.y output
-	0b10000000 Screen.pixel output
+	corruption not if {
+		0* Screen.x output
+		0* Screen.y output
+		0b10000000 Screen.pixel output
+	}
 }
 
 fun clamp ( short:value short:min short:max -- short ) {
