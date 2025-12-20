@@ -122,15 +122,19 @@ fun on-reset ( -> ) {
 fun on-screen ( -> ) {
 	scene Scene.intro eq if {
 		intro-draw-foreground
+
+		intro-update-palette
 	} elif scene Scene.field eq {
+		field-draw-foreground
+
 		dreloc-update
 		campfire-update
 
-		field-draw-foreground
+		field-update-palette
 	} elif scene Scene.synergy eq {
-		dreloc-update
-
 		synergy-draw-foreground
+
+		dreloc-update
 	}
 
 	elapsed inc -> elapsed
@@ -202,7 +206,7 @@ const short INTRO_FADE_OUT_START_TIME { 300* }
 const short INTRO_FADE_OUT_TIME       { 100* }
 
 fun intro-draw-foreground ( -- ) {
-	intro-update-palette
+	elapsed 10* mod2 0* eq if { intro-draw-background }
 
 	clear-foreground
 
@@ -233,6 +237,8 @@ fun intro-draw-foreground ( -- ) {
 
 fun intro-draw-background ( -- ) {
 	clear-background
+
+	draw-waves
 
 	// Draw bloom
 	&sprite-bloom Screen.addr output
@@ -311,8 +317,6 @@ fun goto-field ( -- ) {
 }
 
 fun field-draw-foreground ( -- ) {
-	field-update-palette
-
 	clear-foreground
 
 	// Calculate index used for slicing the array of flowers
