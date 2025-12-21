@@ -136,6 +136,8 @@ fun on-reset ( -> ) {
 }
 
 fun on-screen ( -> ) {
+	corruption if { return }
+
 	scene Scene.intro eq if {
 		intro-draw-foreground
 	} elif scene Scene.field eq {
@@ -150,36 +152,6 @@ fun on-screen ( -> ) {
 	}
 
 	update-transition
-
-	corruption if {
-		// FILL THE WHOLE ROM WITH RANDOM DATA!!
-		// Is this safe? ABSOLUTELY NOT
-
-		0* -> (i) while dup 0xf* lth {
-			prng as (*byte:addr) sth {
-				sth-rk load -> (byte)
-
-				sth-rk &sprite-dreloc gth if {
-					{ prng 255* mod2 to-byte } sth-rk store
-				} elif
-				(byte) dup 0x80 eq // LIT
-				{
-					{ prng 255* mod2 to-byte } { sth-rk 1* add } store
-				} elif
-				dup  (byte) 0xa0 eq    // LIT2
-				over (byte) 0x60 eq or // JSI
-				over (byte) 0x40 eq or // JMI
-				{
-					{ prng 255* mod2 to-byte } { sth-rk 1* add } store
-					{ prng 255* mod2 to-byte } { sth-rk 2* add } store
-				}
-
-				(byte) pop
-			} pop-r
-
-			(i) inc
-		} pop
-	}
 
 	elapsed inc -> elapsed
 }
@@ -476,8 +448,24 @@ fun synergy-draw-foreground ( -- ) {
 	dreloc.x { dreloc.mirrored-x DRELOC_WIDTH add } lth and
 	{ dreloc.y DRELOC_HEIGHT add } { dreloc.mirrored-y DRELOC_HEIGHT add GRID_SIZE sub } gth and
 	{ dreloc.y DRELOC_HEIGHT add GRID_SIZE sub } { dreloc.mirrored-y DRELOC_HEIGHT add } lth and
+	corruption not and
 	if {
 		1 -> corruption
+
+		// Draw random glitchy thingies
+		0* -> (idx) while dup 0x400* lth {
+			{ prng 0x400* mod2 } &sprite-dreloc add Screen.addr output
+			prng SCREEN_WIDTH  mod2 Screen.x output
+			prng SCREEN_HEIGHT mod2 Screen.y output
+			prng to-byte 0b01111110 and Screen.auto output
+			prng to-byte Screen.sprite
+			output-k output-k output-k output
+
+			(idx) inc
+		} pop
+
+		0* flowers-draw-above
+		flakes-draw
 	}
 
 	cursor-draw
