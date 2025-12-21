@@ -1,5 +1,8 @@
 # DRELOC.rom
 
+> [!WARNING]
+> The game may contain flickering colors.
+
 *It just wants to live a peacefull life...*
 
 *Keep your fire alive.*
