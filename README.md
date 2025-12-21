@@ -1,7 +1,7 @@
 # DRELOC.rom
 
 > [!WARNING]
-> The game may contain flickering colors.
+> May contain flashing lights
 
 *It just wants to live a peacefull life...*
 
