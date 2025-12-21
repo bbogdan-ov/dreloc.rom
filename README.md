@@ -12,10 +12,9 @@ A small demo game for [UXN] made in [UXNSMAL].
 [UXN]: https://100r.co/site/uxn.html
 [UXNSMAL]: https://github.com/bbogdan-ov/uxnsmal
 
+![dreloc](./screenshots/dreloc.gif)
 ![1](./screenshots/1.png)
 ![2](./screenshots/2.png)
-![3](./screenshots/3.png)
-![4](./screenshots/4.png)
 
 ## Play
 
