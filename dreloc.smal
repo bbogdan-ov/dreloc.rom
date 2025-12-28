@@ -1133,11 +1133,11 @@ fun snap ( short -- short ) {
 }
 
 fun not ( byte -- byte ) { 0 eq }
-fun mod ( byte:num byte:divisor -- byte:remainder ) { div-k mul sub }
-fun mod2 ( short:num short:divisor -- short:remainder ) { div-k mul sub }
+fun mod ( byte:num byte:divisor -- byte:remainder ) { div-k mul sub -> (remainder) }
+fun mod2 ( short:num short:divisor -- short:remainder ) { div-k mul sub -> (remainder) }
 
 fun to-short ( byte -- short ) { 0 swap as (short) }
-fun to-byte ( short -- byte ) { as (byte:a byte:b) nip (b) }
+fun to-byte ( short -- byte ) { as (byte:a byte:b) nip (b) -> (_) }
 
 // Pseudo-random functions ported from UXNTAL
 // https://wiki.xxiivv.com/site/uxntal_software.html
