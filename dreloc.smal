@@ -302,7 +302,7 @@ fun update-transition ( -- ) {
 
 const short INTRO_DRELOC_X    { { SCREEN_WIDTH 2* div } { DRELOC_WIDTH 2* div } sub }
 const short INTRO_DRELOC_Y    { { SCREEN_HEIGHT 2* div } { DRELOC_HEIGHT 2* div } sub }
-const *byte INTRO_DRELOC_ADDR { { 2* dreloc-rest-frame-offset } &sprite-dreloc add }
+const *byte INTRO_DRELOC_ADDR { { 2* dreloc-rest-frame-offset } &sprite-dreloc as (*byte) add }
 
 const short INTRO_BLOOM_X { { SCREEN_WIDTH 2* div } { BLOOM_WIDTH 2* div } sub }
 const short INTRO_BLOOM_Y { { SCREEN_HEIGHT 2* div } { BLOOM_HEIGHT 2* div } sub 40* add }
