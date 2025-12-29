@@ -165,14 +165,14 @@ fun on-mouse ( -> ) {
 	next-scene Scene.none eq and
 	if {
 		// Check whether the cursor is hovering over a non-picked up flower
-		cursor.y FLOWERS_GAP_Y sub FLOWERS_GAP_Y div -> (flower-idx) sth
+		cursor.y FLOWERS_GAP_Y sub FLOWERS_GAP_Y div : (flower-idx) sth
 		sth-rk (flower-idx) flowers[].picked not if {
 			sth-rk (flower-idx) flowers[].x sth
 			sth-rk cursor.x lth
 			sth-r  cursor.x FLOWER_WIDTH sub gth
-			and -> (picking)
+			and : (picking)
 		} else {
-			0 -> (picking)
+			0 : (picking)
 		}
 
 		(picking) -> cursor.grab
@@ -240,18 +240,18 @@ fun update-transition ( -- ) {
 	}
 
 	// Normalize `transition-frame` to range 0-LERP_MAX_ALPHA
-	transition-frame LERP_MAX_ALPHA mul { TRANSITION_DURATION 2* div } div -> (alpha)
+	transition-frame LERP_MAX_ALPHA mul { TRANSITION_DURATION 2* div } div : (alpha)
 
 	scene Scene.intro eq
 	next-scene { dup Scene.intro eq } { swap Scene.none eq } or
 	and if {
-		(alpha) 2* div -> (alpha)
+		(alpha) 2* div : (alpha)
 	} else {
 		// Ping-pong alpha
 		(alpha) dup LERP_MAX_ALPHA lth if {
-			LERP_MAX_ALPHA swap (_ alpha) sub -> (alpha)
+			LERP_MAX_ALPHA swap (_ alpha) sub : (alpha)
 		} else {
-			(alpha) LERP_MAX_ALPHA sub -> (alpha)
+			(alpha) LERP_MAX_ALPHA sub : (alpha)
 		}
 	}
 
@@ -266,20 +266,20 @@ fun update-transition ( -- ) {
 		sth-rk 0x0* CYAN_RGB4 lerp-color
 		sth-rk 0x0* CYAN_R3   lerp-color 0x40 shift or
 		sth-rk 0x0* CYAN_RGB2 lerp-color 0x80 shift or
-		sth-rk 0x0* CYAN_R1   lerp-color 0xc0 shift or -> (r)
+		sth-rk 0x0* CYAN_R1   lerp-color 0xc0 shift or : (r)
 		(r) System.r output
 
 		sth-rk 0x0* CYAN_RGB4 lerp-color
 		sth-rk 0x0* CYAN_GB3  lerp-color 0x40 shift or
 		sth-rk 0x0* CYAN_RGB2 lerp-color 0x80 shift or
-		sth-rk 0x0* CYAN_GB1  lerp-color 0xc0 shift or -> (c)
+		sth-rk 0x0* CYAN_GB1  lerp-color 0xc0 shift or : (c)
 		(c) dup System.g output
 		(c)     System.b output
 	} elif next-scene Scene.synergy eq {
 		sth-rk 0x0* DARKNESS_RGB4 lerp-color
 		sth-rk 0x0* DARKNESS_RGB3 lerp-color 0x40 shift or
 		sth-rk 0x0* DARKNESS_RGB2 lerp-color 0x80 shift or
-		sth-rk 0x0* DARKNESS_RGB1 lerp-color 0xc0 shift or -> (c)
+		sth-rk 0x0* DARKNESS_RGB1 lerp-color 0xc0 shift or : (c)
 		(c) dup System.r output
 		(c) dup System.g output
 		(c)     System.b output
@@ -287,7 +287,7 @@ fun update-transition ( -- ) {
 		sth-rk 0x0* DEFAULT_RGB4 lerp-color
 		sth-rk 0x0* DEFAULT_RGB3 lerp-color 0x40 shift or
 		sth-rk 0x0* DEFAULT_RGB2 lerp-color 0x80 shift or
-		sth-rk 0x0* DEFAULT_RGB1 lerp-color 0xc0 shift or -> (c)
+		sth-rk 0x0* DEFAULT_RGB1 lerp-color 0xc0 shift or : (c)
 		(c) dup System.r output
 		(c) dup System.g output
 		(c)     System.b output
@@ -326,23 +326,23 @@ fun intro-draw-foreground ( -- ) {
 	// Animate nimb Y position using lerp and ease-out-quant
 	// There is a lot of magic numbers, i know
 	{
-		elapsed INTRO_NIMB_TIME min2 -> (alpha)
-		0* -> (from)
-		INTRO_NIMB_Y -> (to)
+		elapsed INTRO_NIMB_TIME min2 : (alpha)
+		0* : (from)
+		INTRO_NIMB_Y : (to)
 
-		over (to from) sub -> (diff)
+		over (to from) sub : (diff)
 		rot (from diff alpha)
 		{ // ease-out-quant
 			(alpha) {
 				INTRO_NIMB_TIME swap (_ alpha) sub
 				dup mul INTRO_NIMB_TIME div // pow(x, 2)
 				dup mul INTRO_NIMB_TIME div // pow(x, 2)
-			} -> (alpha)
-			(alpha) INTRO_NIMB_TIME swap (_ alpha) sub -> (alpha)
+			} : (alpha)
+			(alpha) INTRO_NIMB_TIME swap (_ alpha) sub : (alpha)
 		}
-		(diff alpha) mul INTRO_NIMB_TIME div -> (delta)
+		(diff alpha) mul INTRO_NIMB_TIME div : (delta)
 		(from delta) add
-	} -> (nimb-y)
+	} : (nimb-y)
 
 	INTRO_NIMB_X swap (_ nimb-y) nimb-draw
 }
@@ -392,7 +392,7 @@ fun field-draw-foreground ( -- ) {
 	clear-foreground
 
 	// Calculate index used for slicing the array of flowers
-	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } FLOWERS_GAP_Y div -> (idx)
+	{ dreloc.y DRELOC_HEIGHT add FLOWER_HEIGHT sub } FLOWERS_GAP_Y div : (idx)
 
 	(idx) dup flowers-draw-below
 	campfire-fire-draw-below
@@ -409,8 +409,8 @@ fun field-draw-background ( -- ) {
 
 	// Draw patches of grass
 	0b00010110 Screen.auto output
-	0* -> (idx) while dup 50* lth {
-		(idx) dup GRASS_FRAMES mod2 GRASS_FRAME_STRIDE mul &sprite-grass add -> (addr)
+	0* : (idx) while dup 50* lth {
+		(idx) dup GRASS_FRAMES mod2 GRASS_FRAME_STRIDE mul &sprite-grass add : (addr)
 		(addr) Screen.addr output
 
 		prng { SCREEN_WIDTH GRASS_WIDTH sub }   mod2 Screen.x output
@@ -431,7 +431,7 @@ fun synergy-draw-foreground ( -- ) {
 
 	clear-foreground
 
-	dreloc.y dreloc.mirrored-y lth -> (below)
+	dreloc.y dreloc.mirrored-y lth : (below)
 	(below) dup not if { dreloc-draw-mirrored }
 
 	dreloc-draw
@@ -453,7 +453,7 @@ fun synergy-draw-foreground ( -- ) {
 		1 -> corruption
 
 		// Draw random glitchy thingies
-		0* -> (idx) while dup 0x400* lth {
+		0* : (idx) while dup 0x400* lth {
 			{ prng 0x400* mod2 } &sprite-dreloc add Screen.addr output
 			prng SCREEN_WIDTH  mod2 Screen.x output
 			prng SCREEN_HEIGHT mod2 Screen.y output
@@ -579,8 +579,8 @@ fun dreloc-update ( -- ) {
 	elif dreloc.state State.pick     eq { dreloc-update-pick-up-anim }
 
 	scene Scene.synergy eq if {
-		SCREEN_WIDTH  dreloc.x sub DRELOC_WIDTH  sub -> (x)
-		SCREEN_HEIGHT dreloc.y sub DRELOC_HEIGHT sub -> (y)
+		SCREEN_WIDTH  dreloc.x sub DRELOC_WIDTH  sub : (x)
+		SCREEN_HEIGHT dreloc.y sub DRELOC_HEIGHT sub : (y)
 		(y) -> dreloc.mirrored-y
 		(x) -> dreloc.mirrored-x
 	}
@@ -629,7 +629,7 @@ fun dreloc-update-stand-up-anim ( -- ) {
 fun dreloc-update-pick-up-anim ( -- ) {
 	dreloc.pick-frame { DRELOC_PICK_FRAMES FRAME_DELAY mul } lth
 	if {
-		dreloc.pick-frame -> (frame)
+		dreloc.pick-frame : (frame)
 		dup (frame) { 2 FRAME_DELAY mul } eq if {
 			dreloc-pick-up-flower
 		}
@@ -668,43 +668,43 @@ fun dreloc-draw-mirrored ( -- ) {
 	dreloc.mirrored-y Screen.y output
 
 	{
-		0b11000000 MIRRORED_DRELOC_COLOR or -> (bits)
+		0b11000000 MIRRORED_DRELOC_COLOR or : (bits)
 		{
 			elapsed dup mul 33* mod2 10* lth
 			if { elapsed 6* mod2 4* mul } else { 0* }
-		} -> (offset)
-		dreloc.walk-dir Dir-invert -> (dir)
+		} : (offset)
+		dreloc.walk-dir Dir-invert : (dir)
 	} (bits offset dir) sprite-dreloc-draw
 }
 
 fun sprite-dreloc-draw ( byte:bits short:data-offset Dir:dir -- ) {
 	// Choose frame based on in which direction Dreloc is looking
-	/**/ dup Dir.down  eq if { pop (data-offset) -> (_) }
+	/**/ dup Dir.down  eq if { pop (data-offset) : (_) }
 	elif dup Dir.left  eq    { pop (data-offset) DRELOC_FRAME_STRIDE 3* mul add }
 	elif dup Dir.up    eq    { pop (data-offset) DRELOC_FRAME_STRIDE 6* mul add }
 	elif dup Dir.right eq    { pop (data-offset) DRELOC_FRAME_STRIDE 9* mul add }
-	else { pop (data-offset) -> (_) } -> (frame)
+	else { pop (data-offset) : (_) } : (frame)
 
 	dreloc.state State.walk eq if {
 		{ dreloc.walk-frame FRAME_DELAY } div sth
-		/**/ sth-kr 1 eq if { (frame) DRELOC_FRAME_STRIDE add -> (frame) }
+		/**/ sth-kr 1 eq if { (frame) DRELOC_FRAME_STRIDE add : (frame) }
 		elif sth-kr 2 eq    { (frame) }
-		elif sth-kr 3 eq    { (frame) DRELOC_FRAME_STRIDE 2* mul add -> (frame) }
+		elif sth-kr 3 eq    { (frame) DRELOC_FRAME_STRIDE 2* mul add : (frame) }
 		pop-r
 	}
 
 	{ dreloc.rest-frame FRAME_DELAY } div sth
 	/**/ sth-kr 0 eq if { (frame) }
-	elif sth-kr 1 eq    { (frame) 0* dreloc-rest-frame-offset add -> (frame) }
-	elif sth-kr 2 eq    { (frame) 1* dreloc-rest-frame-offset add -> (frame) }
-	elif sth-kr 3 eq    { (frame) 2* dreloc-rest-frame-offset add -> (frame) }
+	elif sth-kr 1 eq    { (frame) 0* dreloc-rest-frame-offset add : (frame) }
+	elif sth-kr 2 eq    { (frame) 1* dreloc-rest-frame-offset add : (frame) }
+	elif sth-kr 3 eq    { (frame) 2* dreloc-rest-frame-offset add : (frame) }
 	pop-r
 
 	{ dreloc.pick-frame FRAME_DELAY } div sth
 	/**/ sth-kr 0 eq if { (frame) }
-	elif sth-kr 1 eq    { (frame) 0* dreloc-rest-frame-offset add -> (frame) }
-	elif sth-kr 2 eq    { (frame) 1* dreloc-rest-frame-offset add -> (frame) }
-	elif sth-kr 3 eq    { (frame) 0* dreloc-rest-frame-offset add -> (frame) }
+	elif sth-kr 1 eq    { (frame) 0* dreloc-rest-frame-offset add : (frame) }
+	elif sth-kr 2 eq    { (frame) 1* dreloc-rest-frame-offset add : (frame) }
+	elif sth-kr 3 eq    { (frame) 0* dreloc-rest-frame-offset add : (frame) }
 	pop-r
 
 	{ (frame) &sprite-dreloc add } Screen.addr output
@@ -738,10 +738,10 @@ fun dreloc-move-to-cursor ( -- ) {
 	} -> dreloc.target-x
 
 	{
-		cursor.y -> (y)
+		cursor.y : (y)
 		
 		// Set target Y a bit lower when picking up a flower
-		dreloc.is-picking if { (y) FLOWER_HEIGHT 2* div add -> (y) }
+		dreloc.is-picking if { (y) FLOWER_HEIGHT 2* div add : (y) }
 
 		(y) DRELOC_HEIGHT SCREEN_HEIGHT clamp snap
 		DRELOC_HEIGHT sub
@@ -843,7 +843,7 @@ fun campfire-update-palette ( -- ) {
 	sth-rk DARKNESS_RGB4 DEFAULT_RGB4 lerp-color
 	sth-rk DARKNESS_RGB3 DEFAULT_RGB3 lerp-color 0x40 shift or
 	sth-rk DARKNESS_RGB2 DEFAULT_RGB2 lerp-color 0x80 shift or
-	sth-r  DARKNESS_RGB1 DEFAULT_RGB1 lerp-color 0xc0 shift or -> (c)
+	sth-r  DARKNESS_RGB1 DEFAULT_RGB1 lerp-color 0xc0 shift or : (c)
 	(c) dup System.r output
 	(c) dup System.g output
 	(c)     System.b output
@@ -854,8 +854,8 @@ fun campfire-set-fuel ( byte -- ) {
 	campfire-update-palette
 }
 fun campfire-throw-flower ( -- ) {
-	CAMPFIRE_FLOWER_FUEL campfire.fuel add -> (fuel)
-	(fuel) CAMPFIRE_MAX_FUEL min -> (fuel)
+	CAMPFIRE_FLOWER_FUEL campfire.fuel add : (fuel)
+	(fuel) CAMPFIRE_MAX_FUEL min : (fuel)
 	(fuel) campfire-set-fuel
 
 	0 -> campfire.frame
@@ -892,17 +892,17 @@ fun campfire-fire-draw-above ( -- ) {
 fun campfire-fire-draw ( -- ) {
 	campfire.fuel 0 eq if { return }
 
-	campfire.frame FRAME_DELAY div to-short -> (frame)
-	(frame) FIRE_FRAME_STRIDE mul -> (frame)
+	campfire.frame FRAME_DELAY div to-short : (frame)
+	(frame) FIRE_FRAME_STRIDE mul : (frame)
 
 	campfire.refueled-anim if {
-		FIRE_FRAME_STRIDE 16* mul add -> (frame)
+		FIRE_FRAME_STRIDE 16* mul add : (frame)
 		campfire.frame { FIRE_FRAMES FRAME_DELAY mul } 1 sub eq if { 0 -> campfire.refueled-anim }
 	} else {
 		campfire.fuel sth
-		/**/ sth-rk 20 lth if { FIRE_FRAME_STRIDE 12* mul add -> (frame) }
-		elif sth-rk 30 lth    { FIRE_FRAME_STRIDE 8*  mul add -> (frame) }
-		elif sth-rk 50 lth    { FIRE_FRAME_STRIDE 4*  mul add -> (frame) }
+		/**/ sth-rk 20 lth if { FIRE_FRAME_STRIDE 12* mul add : (frame) }
+		elif sth-rk 30 lth    { FIRE_FRAME_STRIDE 8*  mul add : (frame) }
+		elif sth-rk 50 lth    { FIRE_FRAME_STRIDE 4*  mul add : (frame) }
 		pop-r
 	}
 
@@ -940,14 +940,14 @@ struct Flower {
 rom var [94]Flower flowers
 
 fun flowers-populate ( -- ) {
-	0* -> (idx) while dup FLOWERS_COUNT lth {
+	0* : (idx) while dup FLOWERS_COUNT lth {
 		(idx) sth
 
 		// Randomize X so that flowers do not overlap with the campfire
-		0* -> (x) sth
+		0* : (x) sth
 		loop @exit {
 			pop-r
-			prng { SCREEN_WIDTH FLOWER_WIDTH sub } mod2 -> (x) sth
+			prng { SCREEN_WIDTH FLOWER_WIDTH sub } mod2 : (x) sth
 
 			sth-rk (x) CAMPFIRE_X     GRID_SIZE sub FLOWER_WIDTH sub lth
 			sth-rk (x) CAMPFIRE_RIGHT GRID_SIZE add                  gth or
@@ -995,11 +995,11 @@ fun flower-draw ( short:idx -- ) {
 	0b00010110 Screen.auto output
 
 	{ dup (idx) FLOWERS_GAP_Y mul } Screen.y output
-	{ dup (idx) flowers[].x } -> (x)
+	{ dup (idx) flowers[].x } : (x)
 
 	// Calculate sine offset
 	{ dup (x) 80* div } { rot (idx) 10* div } add
-	{ elapsed 12* div } sub -> (sine-offset)
+	{ elapsed 12* div } sub : (sine-offset)
 
 	// Draw rows of the flower sprite
 	(x sine-offset)
@@ -1019,7 +1019,7 @@ fun flower-draw-row ( short:x short:sine-offset short:divide -- ) {
 	swap
 
 	// Calculate X shifting/tilt for the row
-	(sine-offset) sin to-short swap (divide) div -> (tilt)
+	(sine-offset) sin to-short swap (divide) div : (tilt)
 
 	(x tilt) add Screen.x output
 	FLOWER_BITS  Screen.sprite output
@@ -1056,23 +1056,23 @@ fun flakes-draw ( -- ) {
 	0 Screen.auto output
 	&sprite-flake Screen.addr output
 
-	0* -> (idx) while dup FLAKES_COUNT lth {
+	0* : (idx) while dup FLAKES_COUNT lth {
 		(idx) sth
 
-		sth-rk flakes[].x -> (x)
-		sth-rk flakes[].y -> (y)
+		sth-rk flakes[].x : (x)
+		sth-rk flakes[].y : (y)
 
 		// Move flake vertically
 		dup (y) { sth-rk flakes[].speed } add sth-rk -> flakes[].y
 
 		// Move flake horizontally
-		{ (y) 100* div } sth-rk (idx) add sin to-short 5* div -> (delta)
+		{ (y) 100* div } sth-rk (idx) add sin to-short 5* div : (delta)
 		(x delta) add sth-rk -> flakes[].x
 
 		// Draw the flake
 		// Devide X and Y by 10 because these are fixed point number with precision of 1
-		{ sth-rk flakes[].x 10* div } -> (x) dup Screen.x output
-		{ sth-rk flakes[].y 10* div } -> (y) dup Screen.y output
+		{ sth-rk flakes[].x 10* div } : (x) dup Screen.x output
+		{ sth-rk flakes[].y 10* div } : (y) dup Screen.y output
 		FLAKE_BITS Screen.sprite output
 
 		// Wrap flake from one screen edge to another
@@ -1108,23 +1108,23 @@ fun clamp ( short:value short:min short:max -- short ) {
 
 fun min ( byte:a byte:b -- byte ) {
 	gth-k
-	if   { nip (b) -> (_) }
-	else { pop (a) -> (_) }
+	if   { nip (b) : (_) }
+	else { pop (a) : (_) }
 }
 fun min2 ( short:a short:b -- short ) {
 	gth-k
-	if   { nip (b) -> (_) }
-	else { pop (a) -> (_) }
+	if   { nip (b) : (_) }
+	else { pop (a) : (_) }
 }
 fun max ( byte:a byte:b -- byte ) {
 	gth-k
-	if   { pop (a) -> (_) }
-	else { nip (b) -> (_) }
+	if   { pop (a) : (_) }
+	else { nip (b) : (_) }
 }
 fun max2 ( short:a short:b -- short ) {
 	gth-k
-	if   { pop (a) -> (_) }
-	else { nip (b) -> (_) }
+	if   { pop (a) : (_) }
+	else { nip (b) : (_) }
 }
 
 // Snap value to the grid
@@ -1133,11 +1133,11 @@ fun snap ( short -- short ) {
 }
 
 fun not ( byte -- byte ) { 0 eq }
-fun mod ( byte:num byte:divisor -- byte:remainder ) { div-k mul sub -> (remainder) }
-fun mod2 ( short:num short:divisor -- short:remainder ) { div-k mul sub -> (remainder) }
+fun mod ( byte:num byte:divisor -- byte:remainder ) { div-k mul sub : (remainder) }
+fun mod2 ( short:num short:divisor -- short:remainder ) { div-k mul sub : (remainder) }
 
 fun to-short ( byte -- short ) { 0 swap as (short) }
-fun to-byte ( short -- byte ) { as (byte:a byte:b) nip (b) -> (_) }
+fun to-byte ( short -- byte ) { as (byte:a byte:b) nip (b) : (_) }
 
 // Pseudo-random functions ported from UXNTAL
 // https://wiki.xxiivv.com/site/uxntal_software.html
@@ -1175,10 +1175,10 @@ fun sin ( short -- byte ) {
 const short LERP_MAX_ALPHA { 100* }
 
 fun lerp-color ( short:alpha short:from short:to -- short ) {
-	over (to from) sub -> (diff)
+	over (to from) sub : (diff)
 	rot (from diff alpha)
-	(alpha) LERP_MAX_ALPHA min2 -> (alpha) // Clamp alpha so lerp doesn't overshoot
-	(diff alpha) mul LERP_MAX_ALPHA div -> (delta)
+	(alpha) LERP_MAX_ALPHA min2 : (alpha) // Clamp alpha so lerp doesn't overshoot
+	(diff alpha) mul LERP_MAX_ALPHA div : (delta)
 	(from delta) add
 }
 
