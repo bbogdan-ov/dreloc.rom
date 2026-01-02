@@ -18,7 +18,7 @@ A small demo game for [UXN] made in [UXNSMAL].
 
 ## Play
 
-To play DRELOC.rom just download the [`output.rom`](./output.rom) file and open it with your
+To play DRELOC.rom simply download [`output.rom`](./output.rom) and open it with your
 favorite UXN VARVARA emulator.
 
 If you don't have one, you can use [the web emulator](https://rabbits.srht.site/uxn5/).
