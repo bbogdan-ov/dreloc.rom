@@ -956,7 +956,7 @@ fun flowers-populate ( -- ) {
 			sth-rk CAMPFIRE_Y FLOWER_HEIGHT sub GRID_SIZE sub lth or
 			sth-r  CAMPFIRE_Y FLOWER_HEIGHT add GRID_SIZE add gth or
 			swap-r
-			if { jump @exit }
+			if { break @exit }
 		}
 
 		sth-r (x) sth-rk (idx) -> flowers[].x
